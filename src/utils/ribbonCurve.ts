@@ -52,9 +52,10 @@ export function getCardTransform(
 
     // Calculate the binormal (banking direction)
     // We use a slightly offset point to calculate the normal plane
-    const offset = 0.001;
-    const posA = curve.getPointAt(Math.max(0, t - offset));
-    const posB = curve.getPointAt(Math.min(1, t + offset));
+    // We use a slightly offset point to calculate the normal plane
+    // const offset = 0.001; // Unused
+    // const posA = curve.getPointAt(Math.max(0, t - offset)); // Unused
+    // const posB = curve.getPointAt(Math.min(1, t + offset)); // Unused
     // const tangentA = posB.clone().sub(posA).normalize(); // Unused
 
     // Create a rotation matrix that aligns the card with the curve
