@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { usePortfolioStore } from '@/store/usePortfolioStore';
+// import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 /**
  * Custom Cursor - trailing blend-mode spotlight

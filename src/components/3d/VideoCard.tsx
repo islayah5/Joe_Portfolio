@@ -23,8 +23,11 @@ export function VideoCard({
     position,
     rotation,
     thumbnail,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     title,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     description,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     credits,
     index,
 }: VideoCardProps) {
@@ -34,7 +37,7 @@ export function VideoCard({
     const [hovered, setHovered] = useState(false);
     const activeCardIndex = usePortfolioStore((state) => state.activeCardIndex);
     const flippedCards = usePortfolioStore((state) => state.flippedCards);
-    const toggleCardFlip = usePortfolioStore((state) => state.toggleCardFlip);
+    // const toggleCardFlip = usePortfolioStore((state) => state.toggleCardFlip); // Unused
     const openPlayer = usePortfolioStore((state) => state.openPlayer);
 
     const isActive = activeCardIndex === index;
@@ -103,6 +106,7 @@ export function VideoCard({
         }
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handlePointerDown = (e: any) => {
         e.stopPropagation();
     };

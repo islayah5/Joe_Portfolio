@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Environment, Stars } from '@react-three/drei';
+import { Stars } from '@react-three/drei';
 import { EffectComposer, Bloom, ChromaticAberration, Noise } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 import { VideoCard } from './VideoCard';

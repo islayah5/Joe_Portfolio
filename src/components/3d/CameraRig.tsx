@@ -5,7 +5,6 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { useRibbonCurve } from '@/utils/ribbonCurve';
 import * as THREE from 'three';
-import { gsap } from 'gsap';
 
 /**
  * Camera Controller - follows the ribbon curve with scroll
@@ -13,7 +12,7 @@ import { gsap } from 'gsap';
  */
 export function CameraRig() {
     const { camera } = useThree();
-    const { curve, getCardTransform } = useRibbonCurve();
+    const { getCardTransform } = useRibbonCurve();
 
     const targetPosition = useRef(new THREE.Vector3());
     const targetQuaternion = useRef(new THREE.Quaternion());
@@ -50,7 +49,7 @@ export function CameraRig() {
         camera.position.lerp(targetPosition.current, delta * 2);
 
         // Create camera rotation to look at the point ahead
-        const direction = lookAtPoint.current.clone().sub(camera.position).normalize();
+        // const direction = lookAtPoint.current.clone().sub(camera.position).normalize(); // Unused
         const up = transform.binormal; // Use curve's binormal for "up" (creates banking)
 
         // Calculate rotation matrix

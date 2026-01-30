@@ -55,7 +55,7 @@ export function getCardTransform(
     const offset = 0.001;
     const posA = curve.getPointAt(Math.max(0, t - offset));
     const posB = curve.getPointAt(Math.min(1, t + offset));
-    const tangentA = posB.clone().sub(posA).normalize();
+    // const tangentA = posB.clone().sub(posA).normalize(); // Unused
 
     // Create a rotation matrix that aligns the card with the curve
     // The card "banks" into curves like a flying camera
