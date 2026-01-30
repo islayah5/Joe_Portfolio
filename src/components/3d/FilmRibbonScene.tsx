@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Stars } from '@react-three/drei';
+import { Stars, Text } from '@react-three/drei';
 import { EffectComposer, Bloom, ChromaticAberration, Noise } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 import { VideoCard } from './VideoCard';
@@ -77,6 +77,12 @@ export function FilmRibbonScene() {
                     );
                 })}
 
+                {/* Section Markers */}
+                <SectionMarker text="NARRATIVE" position={0.13} />
+                <SectionMarker text="COMMERCIAL" position={0.43} />
+                <SectionMarker text="MUSIC VIDEO" position={0.73} />
+                <SectionMarker text="CONTACT" position={0.93} />
+
                 {/* Floating particles that react to speed */}
                 <ParticleField />
 
@@ -84,7 +90,7 @@ export function FilmRibbonScene() {
                 <EffectComposer>
                     {/* Bloom for that filmic glow */}
                     <Bloom
-                        intensity={0.3}
+                        intensity={0.5} // Increased bloom
                         luminanceThreshold={0.2}
                         luminanceSmoothing={0.9}
                         mipmapBlur
@@ -102,11 +108,47 @@ export function FilmRibbonScene() {
                     <Noise
                         premultiply
                         blendFunction={BlendFunction.ADD}
-                        opacity={0.05}
+                        opacity={0.08} // Slightly more grain
                     />
                 </EffectComposer>
             </Canvas>
         </>
+    );
+}
+
+/**
+ * 3D Text Marker Component
+ */
+function SectionMarker({ text, position }: { text: string; position: number }) {
+    const { getCardTransform } = useRibbonCurve();
+    const transform = getCardTransform(position);
+
+    // Offset text slightly above the ribbon
+    const textOffset = new THREE.Vector3(0, 3, 0);
+    textOffset.applyQuaternion(transform.rotation);
+    const finalPos = transform.position.clone().add(textOffset);
+
+    return (
+        <group position={finalPos} quaternion={transform.rotation}>
+            <Text
+                color="white"
+                fontSize={1.5}
+                maxWidth={20}
+                lineHeight={1}
+                letterSpacing={0.1}
+                textAlign="center"
+                anchorX="center"
+                anchorY="middle"
+            >
+                {text}
+                <meshStandardMaterial
+                    color="white"
+                    emissive="white"
+                    emissiveIntensity={0.5}
+                    toneMapped={false}
+                />
+            </Text>
+        </group>
     );
 }
 

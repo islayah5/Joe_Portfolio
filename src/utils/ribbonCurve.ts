@@ -10,17 +10,18 @@ import * as THREE from 'three';
 export function createRibbonCurve(): THREE.CatmullRomCurve3 {
     // Define control points for the curve - creates a figure-8 / infinity loop in 3D
     const points: THREE.Vector3[] = [];
-    const segments = 20;
-    const radius = 15;
-    const heightVariation = 8;
+    const segments = 200; // High resolution for smooth camera movement
+    const radius = 30;    // Larger radius to fit more content
+    const heightVariation = 12;
 
     for (let i = 0; i <= segments; i++) {
         const t = (i / segments) * Math.PI * 2;
 
-        // Create a twisted figure-8 path in 3D space
-        const x = radius * Math.sin(t) * Math.cos(t * 0.5);
-        const y = heightVariation * Math.sin(t * 1.5);
-        const z = radius * Math.cos(t) * Math.sin(t * 0.5);
+        // Create a Twisted Trefoil / Infinity Knot
+        // More complex parametric equation for a longer, more interesting path
+        const x = (radius + Math.cos(t * 3) * 5) * Math.sin(t);
+        const y = heightVariation * Math.sin(t * 2) + Math.sin(t * 5) * 2;
+        const z = (radius + Math.cos(t * 3) * 5) * Math.cos(t);
 
         points.push(new THREE.Vector3(x, y, z));
     }

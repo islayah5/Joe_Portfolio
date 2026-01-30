@@ -18,15 +18,29 @@ export function CameraRig() {
     const targetQuaternion = useRef(new THREE.Quaternion());
     const lookAtPoint = useRef(new THREE.Vector3());
 
+    // Inertial scrolling state
+    const currentScrollRef = useRef(0);
+    const lastScrollProgress = useRef(0);
+
     // Update camera based on scroll - using transient state access for performance
     useFrame((state, delta) => {
         // CRITICAL: Access store transiently to avoid React re-renders at 60 FPS
-        const scrollProgress = usePortfolioStore.getState().scrollProgress;
+        const targetScroll = usePortfolioStore.getState().scrollProgress;
         const videoCards = usePortfolioStore.getState().videoCards;
         const setActiveCardIndex = usePortfolioStore.getState().setActiveCardIndex;
 
-        // Calculate position along curve based on scroll
-        const t = scrollProgress % 1;
+        // 1. INERTIAL PHYSIC LOOP
+        // Smoothly interpolate current scroll towards target scroll
+        // Damping factor of 2.5 creates a "heavy" feel
+        const damping = 2.5;
+        currentScrollRef.current = THREE.MathUtils.lerp(
+            currentScrollRef.current,
+            targetScroll,
+            delta * damping
+        );
+
+        // Calculate position along curve based on smoothed scroll
+        const t = currentScrollRef.current % 1;
 
         // Get transform data at current position
         const transform = getCardTransform(t);
@@ -45,11 +59,10 @@ export function CameraRig() {
         const lookAheadTransform = getCardTransform(lookAheadT);
         lookAtPoint.current.copy(lookAheadTransform.position);
 
-        // Smooth camera movement
-        camera.position.lerp(targetPosition.current, delta * 2);
+        // Smooth camera movement (secondary smoothing for position)
+        camera.position.lerp(targetPosition.current, delta * 3);
 
         // Create camera rotation to look at the point ahead
-        // const direction = lookAtPoint.current.clone().sub(camera.position).normalize(); // Unused
         const up = transform.binormal; // Use curve's binormal for "up" (creates banking)
 
         // Calculate rotation matrix
@@ -58,7 +71,7 @@ export function CameraRig() {
         targetQuaternion.current.setFromRotationMatrix(matrix);
 
         // Smooth rotation with quaternion slerp
-        camera.quaternion.slerp(targetQuaternion.current, delta * 3);
+        camera.quaternion.slerp(targetQuaternion.current, delta * 2);
 
         // Determine active card based on proximity
         let closestIndex = 0;
