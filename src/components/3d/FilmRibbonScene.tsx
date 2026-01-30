@@ -115,8 +115,6 @@ export function FilmRibbonScene() {
  */
 function ParticleField() {
     const particlesRef = useRef<THREE.Points>(null);
-    const scrollProgress = usePortfolioStore((state) => state.scrollProgress);
-    const prevScroll = useRef(scrollProgress);
 
     // Create particle geometry
     const particleCount = 1000;

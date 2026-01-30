@@ -36,8 +36,16 @@ export function createRibbonCurve(): THREE.CatmullRomCurve3 {
 export function getCardTransform(
     curve: THREE.CatmullRomCurve3,
     t: number // Position along curve (0-1)
-) {
-    // Get point on curve  const position = curve.getPointAt(t);
+): {
+    position: THREE.Vector3;
+    rotation: THREE.Quaternion;
+    tangent: THREE.Vector3;
+    normal: THREE.Vector3;
+    binormal: THREE.Vector3;
+    rollAngle: number;
+} {
+    // Get point on curve
+    const position = curve.getPointAt(t);
 
     // Get tangent (forward direction)
     const tangent = curve.getTangentAt(t).normalize();

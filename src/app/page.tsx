@@ -1,8 +1,16 @@
-import { FilmRibbonScene } from '@/components/3d/FilmRibbonScene';
+'use client';
+
+import dynamic from 'next/dynamic';
 import { Navigation } from '@/components/ui/Navigation';
 import { YouTubePlayer } from '@/components/ui/YouTubePlayer';
 import { CustomCursor } from '@/components/ui/CustomCursor';
 import './globals.css';
+
+// Dynamically import 3D scene with SSR disabled
+const FilmRibbonScene = dynamic(
+    () => import('@/components/3d/FilmRibbonScene').then(mod => ({ default: mod.FilmRibbonScene })),
+    { ssr: false }
+);
 
 export default function HomePage() {
     return (

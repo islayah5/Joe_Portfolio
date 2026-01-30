@@ -13,18 +13,19 @@ import { gsap } from 'gsap';
  */
 export function CameraRig() {
     const { camera } = useThree();
-    const scrollProgress = usePortfolioStore((state) => state.scrollProgress);
-    const setActiveCardIndex = usePortfolioStore((state) => state.setActiveCardIndex);
-    const videoCards = usePortfolioStore((state) => state.videoCards);
-
     const { curve, getCardTransform } = useRibbonCurve();
 
     const targetPosition = useRef(new THREE.Vector3());
     const targetQuaternion = useRef(new THREE.Quaternion());
     const lookAtPoint = useRef(new THREE.Vector3());
 
-    // Update camera based on scroll
+    // Update camera based on scroll - using transient state access for performance
     useFrame((state, delta) => {
+        // CRITICAL: Access store transiently to avoid React re-renders at 60 FPS
+        const scrollProgress = usePortfolioStore.getState().scrollProgress;
+        const videoCards = usePortfolioStore.getState().videoCards;
+        const setActiveCardIndex = usePortfolioStore.getState().setActiveCardIndex;
+
         // Calculate position along curve based on scroll
         const t = scrollProgress % 1;
 
@@ -84,26 +85,19 @@ export function CameraRig() {
  * Scroll Listener - converts wheel/touch events to scroll progress
  */
 export function ScrollListener() {
-    const setScrollProgress = usePortfolioStore((state) => state.setScrollProgress);
-    const scrollProgress = usePortfolioStore((state) => state.scrollProgress);
+    const scrollProgressRef = useRef(0);
 
     useEffect(() => {
-        let isScrolling = false;
         const scrollSpeed = 0.0003;
 
         const handleWheel = (e: WheelEvent) => {
             e.preventDefault();
 
             const delta = e.deltaY * scrollSpeed;
-            const newProgress = scrollProgress + delta;
+            scrollProgressRef.current += delta;
 
-            // Allow infinite scrolling by wrapping
-            setScrollProgress(newProgress);
-
-            isScrolling = true;
-            setTimeout(() => {
-                isScrolling = false;
-            }, 100);
+            // Update store
+            usePortfolioStore.getState().setScrollProgress(scrollProgressRef.current);
         };
 
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -113,12 +107,14 @@ export function ScrollListener() {
                 case 'ArrowDown':
                 case 's':
                     e.preventDefault();
-                    setScrollProgress(scrollProgress + keyScrollAmount);
+                    scrollProgressRef.current += keyScrollAmount;
+                    usePortfolioStore.getState().setScrollProgress(scrollProgressRef.current);
                     break;
                 case 'ArrowUp':
                 case 'w':
                     e.preventDefault();
-                    setScrollProgress(scrollProgress - keyScrollAmount);
+                    scrollProgressRef.current -= keyScrollAmount;
+                    usePortfolioStore.getState().setScrollProgress(scrollProgressRef.current);
                     break;
                 case ' ':
                     e.preventDefault();
@@ -134,7 +130,7 @@ export function ScrollListener() {
             window.removeEventListener('wheel', handleWheel);
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [scrollProgress, setScrollProgress]);
+    }, []);
 
     return null;
 }
