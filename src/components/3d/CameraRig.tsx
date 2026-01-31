@@ -40,86 +40,94 @@ export function CameraRig() {
             delta * damping
         );
 
-        // 2. MAGNETIC SNAP
-        // If velocity is very low, snap to nearest card
+        // 2. MAGNETIC SNAP & DYNAMIC FOCUS
+        // If velocity is low, snap to nearest card and LOCK focus
         const velocity = Math.abs(targetScroll - currentScrollRef.current);
-        const snapThreshold = 0.001; // How slow we need to be to snap
-        const snapStrength = 0.5 * delta; // Gentle pull strength
+        const snapThreshold = 0.001;
+        const snapStrength = 2.0 * delta; // Stronger, confident snap
 
-        if (velocity < snapThreshold) {
-            // Find nearest card position
-            let closestDist = Infinity;
-            let snapTarget = -1;
+        let isSnapping = false;
+        let activeCardPosition = -1;
 
-            videoCards.forEach(card => {
-                const dist = Math.abs(card.position - currentScrollRef.current);
-                if (dist < closestDist) {
-                    closestDist = dist;
-                    snapTarget = card.position;
-                }
-            });
+        // Find nearest card
+        let closestDist = Infinity;
+        let snapTarget = -1;
 
-            // Only snap if we are close enough (don't snap across the whole map)
-            if (closestDist < 0.1 && snapTarget !== -1) {
-                // Nudge the ACTUAL target in the store towards the snap target
-                // This creates a physical "pull" that feels natural
-                const nudged = THREE.MathUtils.lerp(targetScroll, snapTarget, snapStrength);
+        videoCards.forEach(card => {
+            const dist = Math.abs(card.position - currentScrollRef.current);
+            if (dist < closestDist) {
+                closestDist = dist;
+                snapTarget = card.position;
+            }
+        });
 
-                // Only write if significant change to avoid thrashing
-                if (Math.abs(nudged - targetScroll) > 0.00001) {
-                    setScrollProgress(nudged);
-                }
+        // Apply Snap if close enough
+        if (closestDist < 0.05 && velocity < 0.005) {
+            isSnapping = true;
+            activeCardPosition = snapTarget;
+
+            // Magnetic Pull
+            const nudged = THREE.MathUtils.lerp(targetScroll, snapTarget, snapStrength);
+            if (Math.abs(nudged - targetScroll) > 0.000001) {
+                setScrollProgress(nudged);
             }
         }
 
-        // Calculate position along curve based on smoothed scroll
+        // --- CAMERA TRANSFORM LOGIC ---
         const t = currentScrollRef.current % 1;
-
-        // Get transform data at current position
         const transform = getCardTransform(t);
 
-        // Camera offset from the path (behind and slightly above the active card)
-        const cameraOffset = new THREE.Vector3(0, 0.5, 3);
-
-        // Rotate offset by the curve's rotation
+        // Position: "Film Crane" Offset
+        // Sits slightly ABOVE and BEHIND the rail for a cinematic view
+        const cameraOffset = new THREE.Vector3(0, 0.5, 4.0);
         cameraOffset.applyQuaternion(transform.rotation);
-
-        // Set target position
         targetPosition.current.copy(transform.position).add(cameraOffset);
 
-        // Calculate look-at point (slightly ahead on the curve)
-        const lookAheadT = (t + 0.05) % 1;
-        const lookAheadTransform = getCardTransform(lookAheadT);
-        lookAtPoint.current.copy(lookAheadTransform.position);
+        // LookAt: DYNAMIC FOCUS SYSTEM
+        // When Moving -> Look Ahead (Anticipation)
+        // When Stopped -> Look DIRECTLY at Card (Framing)
 
-        // Smooth camera movement (secondary smoothing for position)
-        camera.position.lerp(targetPosition.current, delta * 3);
+        // Calculate "Look Ahead" point
+        const lookAheadOffset = 0.08; // How far ahead to look when moving
+        const focusOffset = THREE.MathUtils.lerp(0, lookAheadOffset, Math.min(1, velocity * 200));
 
-        // Create camera rotation to look at the point ahead
-        const up = transform.binormal; // Use curve's binormal for "up" (creates banking)
+        const focusT = (t + focusOffset) % 1;
+        const focusTransform = getCardTransform(focusT);
 
-        // Calculate rotation matrix
+        // If we are snapping/stopped, verify we are looking at the CARD CENTER
+        // (Adjust focus point to ensure the card is dead center in frame)
+        if (isSnapping && activeCardPosition !== -1) {
+            // Exact card position
+            const exactCardTransform = getCardTransform(activeCardPosition);
+            lookAtPoint.current.lerp(exactCardTransform.position, delta * 5);
+        } else {
+            // Normal flight mode
+            lookAtPoint.current.copy(focusTransform.position);
+        }
+
+        // Apply Smooth Movement to Camera (Damped)
+        camera.position.lerp(targetPosition.current, delta * 3.0);
+
+        // Calculate Rotation
+        const up = transform.binormal; // Bank with the curve
         const matrix = new THREE.Matrix4();
         matrix.lookAt(camera.position, lookAtPoint.current, up);
         targetQuaternion.current.setFromRotationMatrix(matrix);
 
-        // Smooth rotation with quaternion slerp
-        camera.quaternion.slerp(targetQuaternion.current, delta * 2);
+        // Apply Smooth Rotation
+        camera.quaternion.slerp(targetQuaternion.current, delta * 4.0);
 
-        // Determine active card based on proximity
+        // Store Update: Active Card Index
+        // Only update if changed to minimize re-renders
         let closestIndex = 0;
-        let closestDistance = Infinity;
-
+        let minDistance = Infinity;
         videoCards.forEach((card, index) => {
-            const cardTransform = getCardTransform(card.position);
-            const distance = camera.position.distanceTo(cardTransform.position);
-
-            if (distance < closestDistance) {
-                closestDistance = distance;
+            const d = Math.abs(card.position - t);
+            if (d < minDistance) {
+                minDistance = d;
                 closestIndex = index;
             }
         });
-
         setActiveCardIndex(closestIndex);
     });
 

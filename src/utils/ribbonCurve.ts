@@ -65,16 +65,9 @@ export function getCardTransform(
     const normal = new THREE.Vector3().crossVectors(up, tangent).normalize();
     const binormal = new THREE.Vector3().crossVectors(tangent, normal).normalize();
 
-    // Calculate roll angle based on curve curvature
-    const curvePoint = curve.getPointAt(t);
-    const nextPoint = curve.getPointAt((t + 0.01) % 1);
-    const curvature = nextPoint.clone().sub(curvePoint).normalize();
-    const rollAngle = Math.atan2(curvature.x, curvature.z) * 0.5; // Dampened banking
-
-    // Create rotation quaternion
-    const matrix = new THREE.Matrix4();
-    matrix.makeBasis(normal, binormal, tangent.clone().negate());
-    const rotation = new THREE.Quaternion().setFromRotationMatrix(matrix);
+    // Calculate roll angle based on curve curvature (banking)
+    // LOWERED INTENSITY: 0.1 for subtle banking, prevents dizziness
+    const rollAngle = Math.atan2(curvature.x, curvature.z) * 0.1;
 
     // Apply bank/roll
     const rollQuaternion = new THREE.Quaternion().setFromAxisAngle(tangent, rollAngle);
