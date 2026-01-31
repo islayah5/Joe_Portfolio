@@ -4,29 +4,30 @@
   /* Film Noir Palette */
   --font-sans: var(--font-inter);
   --font-display: var(--font-oswald);
-  
+
   --color-cinema-black: #050505;
   --color-cinema-dark-blue: #0a0f18;
-  --color-cinema-teal: #22d3ee; /* Electric teal accent */
-  --color-cinema-gold: #fbbf24; /* Warm highlight */
-  --color-cinema-red: #ef4444; /* Alert/Recording red */
+  --color-cinema-teal: #22d3ee;
+  /* Electric teal accent */
+  --color-cinema-gold: #fbbf24;
+  /* Warm highlight */
+  --color-cinema-red: #ef4444;
+  /* Alert/Recording red */
 }
 
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-oswald), ui-sans-serif, system-ui, sans-serif;
-  
+
   --color-brand-teal: var(--color-cinema-teal);
   --color-brand-gold: var(--color-cinema-gold);
 }
 
 body {
   background-color: var(--color-cinema-black);
-  background-image: radial-gradient(
-    circle at 50% 50%,
-    #111827 0%,
-    #050505 80%
-  );
+  background-image: radial-gradient(circle at 50% 50%,
+      #111827 0%,
+      #050505 80%);
   color: white;
   overflow: hidden;
   font-family: var(--font-sans);
@@ -38,18 +39,48 @@ body {
 }
 
 .lens-flare {
-  background: radial-gradient(circle, rgba(34,211,238,0.2) 0%, rgba(0,0,0,0) 70%);
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
   mix-blend-mode: screen;
 }
 
 .scanline {
-  background: linear-gradient(
-    to bottom,
-    rgba(255,255,255,0),
-    rgba(255,255,255,0) 50%,
-    rgba(0,0,0,0.1) 50%,
-    rgba(0,0,0,0.1)
-  );
+  background: linear-gradient(to bottom,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 0) 50%,
+      rgba(0, 0, 0, 0.1) 50%,
+      rgba(0, 0, 0, 0.1));
   background-size: 100% 4px;
   pointer-events: none;
+}
+
+@keyframes glitch {
+  0% {
+    transform: translate(0);
+  }
+
+  20% {
+    transform: translate(-2px, 2px);
+  }
+
+  40% {
+    transform: translate(-2px, -2px);
+  }
+
+  60% {
+    transform: translate(2px, 2px);
+  }
+
+  80% {
+    transform: translate(2px, -2px);
+  }
+
+  100% {
+    transform: translate(0);
+  }
+}
+
+.glitch-hover:hover {
+  animation: glitch 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+  color: var(--color-cinema-teal);
+  text-shadow: 2px 0 var(--color-cinema-red), -2px 0 var(--color-cinema-gold);
 }

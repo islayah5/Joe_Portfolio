@@ -4,6 +4,8 @@ import dynamic from 'next/dynamic';
 import { Navigation } from '@/components/ui/Navigation';
 import { YouTubePlayer } from '@/components/ui/YouTubePlayer';
 import { CustomCursor } from '@/components/ui/CustomCursor';
+import { IntroSequence } from '@/components/ui/IntroSequence';
+import { AudioEngine } from '@/components/ui/AudioEngine';
 import './globals.css';
 
 // Dynamically import 3D scene with SSR disabled
@@ -19,6 +21,8 @@ export default function HomePage() {
             <FilmRibbonScene />
 
             {/* UI Overlays */}
+            <IntroSequence />
+            <AudioEngine />
             <Navigation />
             <YouTubePlayer />
             <CustomCursor />

@@ -29,6 +29,14 @@ export function CameraRig() {
         const targetScroll = usePortfolioStore.getState().scrollProgress;
         const videoCards = usePortfolioStore.getState().videoCards;
         const setActiveCardIndex = usePortfolioStore.getState().setActiveCardIndex;
+        const isIntroComplete = usePortfolioStore.getState().isIntroComplete;
+
+        // 0. CINEMATIC PAUSE
+        // If intro is not complete, freeze camera at "Start Position" (Fly-In prep)
+        if (!isIntroComplete) {
+            // Optional: A slow drift could go here
+            return;
+        }
 
         // 1. INERTIAL PHYSIC LOOP
         // Smoothly interpolate current scroll towards target scroll
@@ -40,11 +48,11 @@ export function CameraRig() {
             delta * damping
         );
 
-        // 2. MAGNETIC SNAP & DYNAMIC FOCUS
+        // 2. MAGNETIC SNAP & DYNAMIC FOCUS (STICKY LOCK)
         // If velocity is low, snap to nearest card and LOCK focus
         const velocity = Math.abs(targetScroll - currentScrollRef.current);
-        const snapThreshold = 0.001;
-        const snapStrength = 2.0 * delta; // Stronger, confident snap
+        const snapThreshold = 0.002; // Increased threshold for earlier catch
+        const snapStrength = 4.0 * delta; // Much stronger pull (Sticky)
 
         let isSnapping = false;
         let activeCardPosition = -1;
@@ -61,14 +69,20 @@ export function CameraRig() {
             }
         });
 
-        // Apply Snap if close enough
-        if (closestDist < 0.05 && velocity < 0.005) {
+        // Apply Sticky Snap
+        // If we are close (0.08) and relatively slow, the magnet engages
+        if (closestDist < 0.08 && velocity < 0.01) {
             isSnapping = true;
             activeCardPosition = snapTarget;
 
-            // Magnetic Pull
+            // Magnetic Pull - Force the target towards the card center
+            // This creates the "Freeze" feeling
             const nudged = THREE.MathUtils.lerp(targetScroll, snapTarget, snapStrength);
-            if (Math.abs(nudged - targetScroll) > 0.000001) {
+
+            // If very close, just lock it hard to avoid micro-jitter
+            if (closestDist < 0.001) {
+                if (targetScroll !== snapTarget) setScrollProgress(snapTarget);
+            } else if (Math.abs(nudged - targetScroll) > 0.000001) {
                 setScrollProgress(nudged);
             }
         }
@@ -144,6 +158,7 @@ export function ScrollListener() {
         const scrollSpeed = 0.0003;
 
         const handleWheel = (e: WheelEvent) => {
+            if (!usePortfolioStore.getState().isIntroComplete) return;
             e.preventDefault();
 
             const delta = e.deltaY * scrollSpeed;

@@ -39,6 +39,10 @@ interface PortfolioState {
     // Sound preferences
     soundEnabled: boolean;
     toggleSound: () => void;
+
+    // Intro state
+    isIntroComplete: boolean;
+    setIntroComplete: () => void;
 }
 
 export const usePortfolioStore = create<PortfolioState>((set) => ({
@@ -186,4 +190,8 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
     // Sound preferences
     soundEnabled: true,
     toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
+
+    // Intro state
+    isIntroComplete: false,
+    setIntroComplete: () => set({ isIntroComplete: true }),
 }));

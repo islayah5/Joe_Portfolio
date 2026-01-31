@@ -66,6 +66,10 @@ export function getCardTransform(
     const binormal = new THREE.Vector3().crossVectors(tangent, normal).normalize();
 
     // Calculate roll angle based on curve curvature (banking)
+    const curvePoint = curve.getPointAt(t);
+    const nextPoint = curve.getPointAt((t + 0.01) % 1);
+    const curvature = nextPoint.clone().sub(curvePoint).normalize();
+
     // LOWERED INTENSITY: 0.1 for subtle banking, prevents dizziness
     const rollAngle = Math.atan2(curvature.x, curvature.z) * 0.1;
 

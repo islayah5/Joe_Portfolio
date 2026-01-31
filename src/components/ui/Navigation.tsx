@@ -1,22 +1,27 @@
 'use client';
 
 import { usePortfolioStore } from '@/store/usePortfolioStore';
-import { useEffect, useState } from 'react';
-import { ChevronRight, Play, Info } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Play, Info } from 'lucide-react';
 
 /**
  * Navigation HUD - Cinematic Overlay
- * Visualizes the ribbon journey as a timeline
+ * Optimized for performance: Uses direct DOM manipulation for scroll updates
+ * to avoid React re-renders at 60fps.
  */
 export function Navigation() {
+    // Only subscribe to stable state (non-scroll)
     const videoCards = usePortfolioStore((state) => state.videoCards);
     const activeCardIndex = usePortfolioStore((state) => state.activeCardIndex);
-    const scrollProgress = usePortfolioStore((state) => state.scrollProgress);
-
-    // Derived state for the timeline
     const activeCard = videoCards[activeCardIndex];
     const totalCards = videoCards.length;
-    const progressPercent = Math.min(100, Math.max(0, (scrollProgress % 1) * 100));
+    const isIntroComplete = usePortfolioStore((state) => state.isIntroComplete);
+
+    // Refs for direct DOM access
+    const progressBarRef = useRef<HTMLDivElement>(null);
+    const indexTextRef = useRef<HTMLDivElement>(null);
+    const categoryTextRef = useRef<HTMLDivElement>(null);
+    const dotsRef = useRef<(HTMLDivElement | null)[]>([]);
 
     // Categories for the timeline visualization
     const categories = [
@@ -27,26 +32,73 @@ export function Navigation() {
         { id: 'contact', label: 'CONTACT', pos: 95 },
     ];
 
+    // Transient Scroll Subscription (No Re-renders!)
+    useEffect(() => {
+        const unsub = usePortfolioStore.subscribe((state) => {
+            const progress = state.scrollProgress;
+            const percentage = Math.min(100, Math.max(0, (progress % 1) * 100));
+
+            // 1. Update Progress Bar
+            if (progressBarRef.current) {
+                progressBarRef.current.style.height = `${percentage}%`;
+            }
+
+            // 2. Update Dots
+            dotsRef.current.forEach((dot, index) => {
+                if (!dot) return;
+                const catPos = categories[index].pos;
+                if (percentage >= catPos) {
+                    dot.style.backgroundColor = '#22d3ee'; // Cyan
+                    dot.style.borderColor = '#22d3ee';
+                } else {
+                    dot.style.backgroundColor = 'transparent';
+                    dot.style.borderColor = 'rgba(255,255,255,0.5)';
+                }
+            });
+
+            // 3. Update Category Text
+            if (categoryTextRef.current) {
+                const currentCat = categories.reduce((prev, curr) => percentage >= curr.pos ? curr : prev, categories[0]);
+                if (categoryTextRef.current.innerText !== currentCat.label) {
+                    categoryTextRef.current.innerText = currentCat.label;
+                }
+            }
+        });
+
+        return () => unsub();
+    }, []);
+
+    // Scroll to section handler
+    const handleDotClick = (pos: number) => {
+        usePortfolioStore.getState().setScrollProgress(pos / 100);
+    };
+
+    // Hide HUD during intro
+    if (!isIntroComplete) return null;
+
     return (
-        <div className="fixed inset-0 pointer-events-none z-10 font-sans">
+        <div className="fixed inset-0 pointer-events-none z-10 font-sans selection:bg-cyan-500/30">
+            {/* Cinematic Overlays */}
+            <div className="absolute inset-0 pointer-events-none opacity-20 scanline z-0"></div>
+            <div className="absolute inset-0 pointer-events-none lens-flare z-0"></div>
 
             {/* --- TOP HUD --- */}
-            <div className="absolute top-0 left-0 right-0 p-8 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent">
+            <div className="absolute top-0 left-0 right-0 p-8 flex justify-between items-start bg-gradient-to-b from-black/90 to-transparent z-10">
                 <div className="flex flex-col">
-                    <h1 className="text-white text-3xl font-bold tracking-tight mb-0">
+                    <h1 className="text-white text-5xl font-bold tracking-tighter mb-0 font-display uppercase">
                         JOE IRIZARRY
                     </h1>
-                    <div className="flex items-center gap-2 text-cyan-400 text-xs tracking-widest uppercase font-semibold">
-                        <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
+                    <div className="flex items-center gap-2 text-cyan-400 text-xs tracking-[0.3em] uppercase font-bold pl-1 glitch-hover">
+                        <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_10px_#22d3ee]"></span>
                         Director / Editor / VFX
                     </div>
                 </div>
 
                 <div className="text-right">
-                    <div className="text-white/40 text-[10px] tracking-[0.2em] mb-1">
+                    <div className="text-white/40 text-[10px] tracking-[0.2em] mb-1 font-mono">
                         PROJECT INDEX
                     </div>
-                    <div className="text-white text-xl font-light">
+                    <div className="text-white text-3xl font-light font-display">
                         <span className="text-cyan-400 font-bold">{(activeCardIndex + 1).toString().padStart(2, '0')}</span>
                         <span className="text-white/30 mx-2">/</span>
                         {totalCards.toString().padStart(2, '0')}
@@ -55,25 +107,30 @@ export function Navigation() {
             </div>
 
             {/* --- RIGHT TIMELINE --- */}
-            <div className="absolute right-8 top-1/2 -translate-y-1/2 w-1 h-64 hidden md:block">
+            <div className="absolute right-8 top-1/2 -translate-y-1/2 w-1 h-64 hidden md:block pointer-events-auto">
                 {/* Track */}
                 <div className="absolute inset-0 bg-white/10 rounded-full w-[2px] mx-auto"></div>
 
                 {/* Progress Indicator */}
                 <div
-                    className="absolute top-0 left-1/2 -translate-x-1/2 w-1 bg-cyan-400 rounded-full shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-all duration-300 ease-out"
-                    style={{ height: `${progressPercent}%` }}
+                    ref={progressBarRef}
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-1 bg-cyan-400 rounded-full shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-none"
+                    style={{ height: `0%` }}
                 ></div>
 
                 {/* Section Dots */}
-                {categories.map((cat) => (
+                {categories.map((cat, i) => (
                     <div
                         key={cat.id}
-                        className="absolute left-1/2 -translate-x-1/2 flex items-center group"
+                        className="absolute left-1/2 -translate-x-1/2 flex items-center group cursor-pointer"
                         style={{ top: `${cat.pos}%` }}
+                        onClick={() => handleDotClick(cat.pos)}
                     >
                         {/* Dot */}
-                        <div className={`w-2 h-2 rounded-full border border-white/50 bg-black transition-colors ${progressPercent >= cat.pos ? 'bg-cyan-400 border-cyan-400' : ''}`} />
+                        <div
+                            ref={(el) => { dotsRef.current[i] = el; }}
+                            className="w-3 h-3 rounded-full border border-white/50 bg-black transition-colors hover:scale-150 duration-200"
+                        />
 
                         {/* Label Tooltip */}
                         <div className="absolute right-6 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap text-white/80 text-[10px] tracking-widest bg-black/80 px-2 py-1 rounded">
@@ -89,8 +146,8 @@ export function Navigation() {
 
                     {/* Category Label */}
                     <div className="overflow-hidden mb-2">
-                        <div className="text-cyan-400 text-xs font-bold tracking-[0.3em] uppercase opacity-80 font-mono">
-                            {categories.reduce((prev, curr) => progressPercent >= curr.pos ? curr.label : prev, 'INTRO')}
+                        <div ref={categoryTextRef} className="text-cyan-400 text-xs font-bold tracking-[0.3em] uppercase opacity-80 font-mono">
+                            INTRO
                         </div>
                     </div>
 
