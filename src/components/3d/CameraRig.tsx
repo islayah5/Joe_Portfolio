@@ -25,19 +25,49 @@ export function CameraRig() {
     // Update camera based on scroll - using transient state access for performance
     useFrame((state, delta) => {
         // CRITICAL: Access store transiently to avoid React re-renders at 60 FPS
-        const targetScroll = usePortfolioStore.getState().scrollProgress;
-        const videoCards = usePortfolioStore.getState().videoCards;
-        const setActiveCardIndex = usePortfolioStore.getState().setActiveCardIndex;
+        const setScrollProgress = usePortfolioStore.getState().setScrollProgress;
 
         // 1. INERTIAL PHYSIC LOOP
         // Smoothly interpolate current scroll towards target scroll
-        // Damping factor of 2.5 creates a "heavy" feel
-        const damping = 2.5;
+        // Damping factor of 2.0 creates a heavier, more impactful feel
+        const damping = 2.0;
         currentScrollRef.current = THREE.MathUtils.lerp(
             currentScrollRef.current,
             targetScroll,
             delta * damping
         );
+
+        // 2. MAGNETIC SNAP
+        // If velocity is very low, snap to nearest card
+        const velocity = Math.abs(targetScroll - currentScrollRef.current);
+        const snapThreshold = 0.001; // How slow we need to be to snap
+        const snapStrength = 0.5 * delta; // Gentle pull strength
+
+        if (velocity < snapThreshold) {
+            // Find nearest card position
+            let closestDist = Infinity;
+            let snapTarget = -1;
+
+            videoCards.forEach(card => {
+                const dist = Math.abs(card.position - currentScrollRef.current);
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    snapTarget = card.position;
+                }
+            });
+
+            // Only snap if we are close enough (don't snap across the whole map)
+            if (closestDist < 0.1 && snapTarget !== -1) {
+                // Nudge the ACTUAL target in the store towards the snap target
+                // This creates a physical "pull" that feels natural
+                const nudged = THREE.MathUtils.lerp(targetScroll, snapTarget, snapStrength);
+
+                // Only write if significant change to avoid thrashing
+                if (Math.abs(nudged - targetScroll) > 0.00001) {
+                    setScrollProgress(nudged);
+                }
+            }
+        }
 
         // Calculate position along curve based on smoothed scroll
         const t = currentScrollRef.current % 1;

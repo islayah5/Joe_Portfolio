@@ -19,6 +19,8 @@ interface PortfolioState {
     // Scroll state
     scrollProgress: number;
     setScrollProgress: (progress: number) => void;
+    scrollToCard: (index: number) => void; // New action for nav clicks
+
 
     // Card flip state
     flippedCards: Set<string>;
@@ -47,6 +49,15 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
     // Scroll state
     scrollProgress: 0,
     setScrollProgress: (progress) => set({ scrollProgress: progress }),
+    scrollToCard: (index) => {
+        set((state) => {
+            const card = state.videoCards[index];
+            if (card) {
+                return { scrollProgress: card.position, activeCardIndex: index };
+            }
+            return {};
+        });
+    },
 
     // Card flip state
     flippedCards: new Set(),
