@@ -73,6 +73,14 @@ export function getCardTransform(
     // LOWERED INTENSITY: 0.1 for subtle banking, prevents dizziness
     const rollAngle = Math.atan2(curvature.x, curvature.z) * 0.1;
 
+    // Construct rotation matrix
+    const rotationMatrix = new THREE.Matrix4();
+    rotationMatrix.makeBasis(tangent, normal, binormal);
+
+    // Create Quaternion from matrix
+    const rotation = new THREE.Quaternion();
+    rotation.setFromRotationMatrix(rotationMatrix);
+
     // Apply bank/roll
     const rollQuaternion = new THREE.Quaternion().setFromAxisAngle(tangent, rollAngle);
     rotation.multiply(rollQuaternion);
