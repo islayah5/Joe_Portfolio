@@ -1,1 +1,55 @@
 @import "tailwindcss";
+
+:root {
+  /* Film Noir Palette */
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-oswald);
+  
+  --color-cinema-black: #050505;
+  --color-cinema-dark-blue: #0a0f18;
+  --color-cinema-teal: #22d3ee; /* Electric teal accent */
+  --color-cinema-gold: #fbbf24; /* Warm highlight */
+  --color-cinema-red: #ef4444; /* Alert/Recording red */
+}
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-oswald), ui-sans-serif, system-ui, sans-serif;
+  
+  --color-brand-teal: var(--color-cinema-teal);
+  --color-brand-gold: var(--color-cinema-gold);
+}
+
+body {
+  background-color: var(--color-cinema-black);
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    #111827 0%,
+    #050505 80%
+  );
+  color: white;
+  overflow: hidden;
+  font-family: var(--font-sans);
+}
+
+/* Custom Utilities for that "Technical" Look */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.lens-flare {
+  background: radial-gradient(circle, rgba(34,211,238,0.2) 0%, rgba(0,0,0,0) 70%);
+  mix-blend-mode: screen;
+}
+
+.scanline {
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0),
+    rgba(255,255,255,0) 50%,
+    rgba(0,0,0,0.1) 50%,
+    rgba(0,0,0,0.1)
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+}

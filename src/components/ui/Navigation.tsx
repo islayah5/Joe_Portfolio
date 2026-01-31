@@ -89,25 +89,25 @@ export function Navigation() {
 
                     {/* Category Label */}
                     <div className="overflow-hidden mb-2">
-                        <div className="text-cyan-400 text-xs font-bold tracking-[0.2em] uppercase opacity-80">
+                        <div className="text-cyan-400 text-xs font-bold tracking-[0.3em] uppercase opacity-80 font-mono">
                             {categories.reduce((prev, curr) => progressPercent >= curr.pos ? curr.label : prev, 'INTRO')}
                         </div>
                     </div>
 
                     {/* Title */}
-                    <h2 className="text-white text-4xl md:text-6xl font-black tracking-tight mb-4 uppercase drop-shadow-lg">
+                    <h2 className="text-white text-6xl md:text-8xl font-black tracking-tighter mb-4 uppercase drop-shadow-[0_0_30px_rgba(0,0,0,0.8)] font-display leading-[0.9]">
                         {activeCard?.title}
                     </h2>
 
                     {/* Description */}
-                    <p className="text-white/80 text-sm md:text-base max-w-lg leading-relaxed mb-6 font-light border-l-2 border-cyan-400 pl-4">
+                    <p className="text-white/80 text-sm md:text-lg max-w-xl leading-relaxed mb-8 font-light border-l-4 border-cyan-400 pl-6 shadow-[-20px_0_40px_-10px_rgba(0,0,0,0.5)]">
                         {activeCard?.description}
                     </p>
 
                     {/* Meta Data / Credits */}
-                    <div className="flex flex-wrap gap-4 text-xs text-white/50 mb-8 font-mono">
+                    <div className="flex flex-wrap gap-4 text-xs text-white/50 mb-8 font-mono tracking-wider">
                         {activeCard?.credits.map((credit, i) => (
-                            <span key={i} className="bg-white/5 px-2 py-1 rounded border border-white/10">
+                            <span key={i} className="bg-black/40 px-3 py-1 border border-white/10 uppercase">
                                 {credit}
                             </span>
                         ))}
@@ -115,11 +115,11 @@ export function Navigation() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-4 items-center pointer-events-auto">
-                        <button className="flex items-center gap-2 px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-sm tracking-wider rounded-none uppercase transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:shadow-[0_0_30px_rgba(6,182,212,0.6)]">
-                            <Play size={16} fill="currentColor" />
+                        <button className="group flex items-center gap-3 px-8 py-4 bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-sm tracking-[0.1em] uppercase transition-all shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_40px_rgba(34,211,238,0.5)] clip-path-slant">
+                            <span className="bg-black text-cyan-400 p-1 rounded-full"><Play size={12} fill="currentColor" /></span>
                             Watch Project
                         </button>
-                        <button className="flex items-center gap-2 px-8 py-3 border border-white/20 hover:border-white/50 bg-black/50 text-white font-medium text-sm tracking-wider rounded-none uppercase backdrop-blur-sm transition-all hover:bg-white/10">
+                        <button className="flex items-center gap-3 px-8 py-4 border border-white/20 hover:border-white/50 bg-black/50 hover:bg-white/10 text-white font-medium text-sm tracking-[0.1em] uppercase backdrop-blur-md transition-all">
                             <Info size={16} />
                             Details
                         </button>

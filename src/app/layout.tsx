@@ -1,9 +1,13 @@
 import type { Metadata } from 'next';
+import { Inter, Oswald } from 'next/font/google';
 import './globals.css';
 
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const oswald = Oswald({ subsets: ['latin'], variable: '--font-oswald' });
+
 export const metadata: Metadata = {
-    title: 'Film Ribbon Portfolio',
-    description: 'An immersive 3D portfolio experience',
+    title: 'Joe Irizarry | Portfolio',
+    description: 'Director / Editor / VFX',
 };
 
 export default function RootLayout({
@@ -13,7 +17,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en">
-            <body className="antialiased" style={{ cursor: 'none' }}>
+            <body className={`${inter.variable} ${oswald.variable} font-sans antialiased`} style={{ cursor: 'none' }}>
                 {children}
             </body>
         </html>

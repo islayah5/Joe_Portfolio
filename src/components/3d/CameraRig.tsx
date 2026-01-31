@@ -26,6 +26,9 @@ export function CameraRig() {
     useFrame((state, delta) => {
         // CRITICAL: Access store transiently to avoid React re-renders at 60 FPS
         const setScrollProgress = usePortfolioStore.getState().setScrollProgress;
+        const targetScroll = usePortfolioStore.getState().scrollProgress;
+        const videoCards = usePortfolioStore.getState().videoCards;
+        const setActiveCardIndex = usePortfolioStore.getState().setActiveCardIndex;
 
         // 1. INERTIAL PHYSIC LOOP
         // Smoothly interpolate current scroll towards target scroll

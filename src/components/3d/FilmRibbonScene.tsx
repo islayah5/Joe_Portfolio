@@ -39,24 +39,24 @@ export function FilmRibbonScene() {
                 {/* Camera Controller */}
                 <CameraRig />
 
-                {/* Lighting */}
-                <ambientLight intensity={0.2} />
-                <directionalLight position={[10, 10, 5]} intensity={0.5} />
-                <pointLight position={[-10, -10, -5]} intensity={0.3} color="#00ffff" />
+                {/* Lighting - Cinematic Teal & Orange Setup */}
+                <ambientLight intensity={0.1} /> {/* Darker ambient */}
+                <directionalLight position={[10, 10, 5]} intensity={1.5} color="#cffafe" /> {/* Cool Key */}
+                <pointLight position={[-10, -10, -5]} intensity={0.5} color="#fbbf24" /> {/* Warm Rim */}
 
                 {/* Environment & Atmosphere */}
                 <Stars
                     radius={100}
                     depth={50}
-                    count={5000}
+                    count={7000} // More stars
                     factor={4}
                     saturation={0}
                     fade
-                    speed={0.5}
+                    speed={1} // Faster twinkle
                 />
 
-                {/* Fog for depth */}
-                <fog attach="fog" args={['#000000', 10, 50]} />
+                {/* Fog for depth - matches global gradient */}
+                <fog attach="fog" args={['#050810', 10, 60]} />
 
                 {/* Video Cards along the ribbon */}
                 {videoCards.map((card, index) => {
