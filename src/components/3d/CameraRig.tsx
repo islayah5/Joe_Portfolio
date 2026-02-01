@@ -46,7 +46,7 @@ export function CameraRig() {
         const dampingSlow = 3.5;  // FIXED: Same as fast for consistency
         const velocityThreshold = 0.01;
 
-        const damping = velocity > velocityThreshold ? dampingFast : dampingSlow;
+        const damping = 4.0; // REFINED: Slightly faster than 3.5 for responsiveness
         currentScrollRef.current = THREE.MathUtils.lerp(
             currentScrollRef.current,
             targetScroll,
@@ -72,18 +72,18 @@ export function CameraRig() {
             }
         });
 
-        // Apply Snap - Only when REALLY stopped
-        if (closestDist < 0.04 && velocity < snapVelocityThreshold) {
+        // Apply Snap - Only when COMPLETELY stopped
+        if (closestDist < snapDistance && velocity < snapVelocityThreshold) {
             isSnapping = true;
             activeCardPosition = snapTarget;
 
-            // Gentle Magnetic Pull
+            // Ultra-gentle magnetic pull
             const nudged = THREE.MathUtils.lerp(targetScroll, snapTarget, snapStrength);
 
-            // Lock when very close
-            if (closestDist < 0.001) {
+            // Hard lock when very close (prevents micro-jitter)
+            if (closestDist < 0.0008) {
                 if (targetScroll !== snapTarget) setScrollProgress(snapTarget);
-            } else if (Math.abs(nudged - targetScroll) > 0.000001) {
+            } else if (Math.abs(nudged - targetScroll) > 0.0000005) {
                 setScrollProgress(nudged);
             }
         }
@@ -92,26 +92,19 @@ export function CameraRig() {
         const t = currentScrollRef.current % 1;
         const transform = getCardTransform(t);
 
-        // FIXED: Camera Positioning - Better centered framing
-        // Slightly higher and farther back for optimal card visibility
-        const cameraOffset = new THREE.Vector3(0, 1.0, 5.0);
+        // OPTIMIZED: Camera Positioning for perfect card visibility
+        // Height adjusted for vertical centering, distance for ideal FOV coverage
+        const cameraOffset = new THREE.Vector3(0, 0.8, 4.5);
         cameraOffset.applyQuaternion(transform.rotation);
         targetPosition.current.copy(transform.position).add(cameraOffset);
 
-        // FIXED: Look directly at current card position for centered framing
-        // No look-ahead - keeps content centered and predictable
+        // OPTIMIZED: Smooth centering (not instant)
         const cardPosition = transform.position.clone();
-        lookAtPoint.current.lerp(cardPosition, delta * 10); // Fast, precise centering
+        lookAtPoint.current.lerp(cardPosition, delta * 6.0); // Smoother than 10
 
-        // OPTIMIZED: Adaptive Camera Movement
-        // Fast scroll = snappy response, slow browse = smooth
-        const posLerpFast = 4.0; // FIXED: Reduced from 8.0
-        const posLerpSlow = 4.0; // FIXED: Same for consistency
-        const rotLerpFast = 5.0; // FIXED: Reduced from 6.0
-        const rotLerpSlow = 5.0; // FIXED: Same for consistency
-
-        const posLerp = velocity > snapVelocityThreshold ? posLerpFast : posLerpSlow;
-        const rotLerp = velocity > snapVelocityThreshold ? rotLerpFast : rotLerpSlow;
+        // REFINED: Consistent smooth camera tracking
+        const posLerp = 5.0;  // Slightly faster than 4.0
+        const rotLerp = 6.0;  // Slightly faster than 5.0
 
         camera.position.lerp(targetPosition.current, delta * posLerp);
 
@@ -121,8 +114,8 @@ export function CameraRig() {
         matrix.lookAt(camera.position, lookAtPoint.current, up);
         targetQuaternion.current.setFromRotationMatrix(matrix);
 
-        // Apply Smooth Rotation
-        camera.quaternion.slerp(targetQuaternion.current, delta * 5.0);
+        // Smooth Rotation
+        camera.quaternion.slerp(targetQuaternion.current, delta * rotLerp);
 
         // Store Update: Active Card Index
         // Only update if changed to minimize re-renders
@@ -146,48 +139,22 @@ export function CameraRig() {
  */
 export function ScrollListener() {
     const scrollProgressRef = useRef(0);
-    const velocityRef = useRef(0);
-    const lastTimeRef = useRef(Date.now());
 
     useEffect(() => {
-        // OPTIMIZED: Increased from 0.0003 to 0.0008 for more responsive feel
-        const scrollSpeed = 0.0008;
-        const maxVelocity = 0.02; // Prevent sudden jumps
-        const momentumDecay = 0.95; // Natural deceleration
-
-        // Momentum animation loop
-        let rafId: number;
-        const applyMomentum = () => {
-            if (Math.abs(velocityRef.current) > 0.0001) {
-                scrollProgressRef.current += velocityRef.current;
-                velocityRef.current *= momentumDecay;
-
-                usePortfolioStore.getState().setScrollProgress(scrollProgressRef.current);
-                rafId = requestAnimationFrame(applyMomentum);
-            }
-        };
+        // PROVEN: Conservative 1.5x increase (not 2.67x)
+        const scrollSpeed = 0.00045;  // Sweet spot between 0.0003 and 0.0005
+        const maxVelocity = 0.012;     // Tighter clamp to prevent jumps
 
         const handleWheel = (e: WheelEvent) => {
             if (!usePortfolioStore.getState().isIntroComplete) return;
             e.preventDefault();
 
-            // Cancel momentum
-            if (rafId) cancelAnimationFrame(rafId);
-
-            // Calculate delta with velocity clamping
+            // DIRECT INPUT - No momentum, no RAF chaos
             let delta = e.deltaY * scrollSpeed;
-
-            // Clamp velocity to prevent jumps
             delta = Math.max(-maxVelocity, Math.min(maxVelocity, delta));
 
             scrollProgressRef.current += delta;
-            velocityRef.current = delta; // Store for momentum
-
-            // Update store
             usePortfolioStore.getState().setScrollProgress(scrollProgressRef.current);
-
-            // Start momentum decay
-            rafId = requestAnimationFrame(applyMomentum);
         };
 
         const handleKeyDown = (e: KeyboardEvent) => {
