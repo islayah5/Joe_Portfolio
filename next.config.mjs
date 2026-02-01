@@ -8,6 +8,8 @@ const nextConfig = {
     experimental: {
         optimizePackageImports: ['three', '@react-three/fiber', '@react-three/drei'],
     },
+    // Increase timeout for 3D scenes during build
+    staticPageGenerationTimeout: 180,
 };
 
 export default nextConfig;

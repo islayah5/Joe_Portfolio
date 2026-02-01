@@ -13,13 +13,15 @@ import * as THREE from 'three';
 
 /**
  * Loading Progress Tracker - Updates store with loading state
+ * Must be used inside Canvas component
  */
 function LoadingTracker() {
     const { progress } = useProgress();
-    const setSceneLoadProgress = usePortfolioStore((state) => state.setSceneLoadProgress);
-    const setSceneReady = usePortfolioStore((state) => state.setSceneReady);
 
     useEffect(() => {
+        const setSceneLoadProgress = usePortfolioStore.getState().setSceneLoadProgress;
+        const setSceneReady = usePortfolioStore.getState().setSceneReady;
+
         setSceneLoadProgress(progress);
 
         // Mark scene as ready when fully loaded
@@ -27,7 +29,7 @@ function LoadingTracker() {
             // Small delay to ensure everything is rendered
             setTimeout(() => setSceneReady(true), 500);
         }
-    }, [progress, setSceneLoadProgress, setSceneReady]);
+    }, [progress]);
 
     return null;
 }
@@ -52,7 +54,6 @@ export function FilmRibbonScene() {
     return (
         <>
             <ScrollListener />
-            <LoadingTracker />
 
             <Canvas
                 camera={{
@@ -70,6 +71,8 @@ export function FilmRibbonScene() {
                 onPointerDown={handlePointerDown}
                 onPointerUp={handlePointerUp}
             >
+                {/* Loading Tracker - must be inside Canvas */}
+                <LoadingTracker />
                 {/* Camera Controller */}
                 <CameraRig />
 
