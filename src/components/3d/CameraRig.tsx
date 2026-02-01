@@ -38,21 +38,25 @@ export function CameraRig() {
             return;
         }
 
-        // 1. INERTIAL PHYSIC LOOP
-        // Smoothly interpolate current scroll towards target scroll
-        // Damping factor of 2.0 creates a heavier, more impactful feel
-        const damping = 2.0;
+        // 1. OPTIMIZED INERTIAL PHYSICS
+        // Velocity-dependent damping for responsive yet smooth feel
+        // Fast scroll = higher damping (snappy), slow = lower damping (smooth)
+        const velocity = Math.abs(targetScroll - currentScrollRef.current);
+        const dampingFast = 8.0;  // Snappy response for fast scrolling
+        const dampingSlow = 4.0;  // Smooth for slow browsing
+        const velocityThreshold = 0.01;
+
+        const damping = velocity > velocityThreshold ? dampingFast : dampingSlow;
         currentScrollRef.current = THREE.MathUtils.lerp(
             currentScrollRef.current,
             targetScroll,
             delta * damping
         );
 
-        // 2. MAGNETIC SNAP & DYNAMIC FOCUS (STICKY LOCK)
-        // If velocity is low, snap to nearest card and LOCK focus
-        const velocity = Math.abs(targetScroll - currentScrollRef.current);
-        const snapThreshold = 0.002; // Increased threshold for earlier catch
-        const snapStrength = 4.0 * delta; // Much stronger pull (Sticky)
+        // 2. OPTIMIZED MAGNETIC SNAP (SMART LOCK)
+        // Only snaps when user STOPS scrolling - no more fighting input
+        const snapVelocityThreshold = 0.005; // Only snap when nearly stopped
+        const snapStrength = 3.0 * delta; // Gentler pull (was 4.0)
 
         let isSnapping = false;
         let activeCardPosition = -1;
@@ -69,17 +73,16 @@ export function CameraRig() {
             }
         });
 
-        // Apply Sticky Snap
-        // If we are close (0.08) and relatively slow, the magnet engages
-        if (closestDist < 0.08 && velocity < 0.01) {
+        // Apply Smart Snap - Only when user stops
+        // Tighter bounds (0.05) and requires near-zero velocity
+        if (closestDist < 0.05 && velocity < snapVelocityThreshold) {
             isSnapping = true;
             activeCardPosition = snapTarget;
 
-            // Magnetic Pull - Force the target towards the card center
-            // This creates the "Freeze" feeling
+            // Gentle Magnetic Pull - doesn't fight user
             const nudged = THREE.MathUtils.lerp(targetScroll, snapTarget, snapStrength);
 
-            // If very close, just lock it hard to avoid micro-jitter
+            // Lock when very close to prevent micro-jitter
             if (closestDist < 0.001) {
                 if (targetScroll !== snapTarget) setScrollProgress(snapTarget);
             } else if (Math.abs(nudged - targetScroll) > 0.000001) {
@@ -119,8 +122,17 @@ export function CameraRig() {
             lookAtPoint.current.copy(focusTransform.position);
         }
 
-        // Apply Smooth Movement to Camera (Damped)
-        camera.position.lerp(targetPosition.current, delta * 3.0);
+        // OPTIMIZED: Adaptive Camera Movement
+        // Fast scroll = snappy response, slow browse = smooth
+        const posLerpFast = 8.0;
+        const posLerpSlow = 3.0;
+        const rotLerpFast = 6.0;
+        const rotLerpSlow = 3.0;
+
+        const posLerp = velocity > snapVelocityThreshold ? posLerpFast : posLerpSlow;
+        const rotLerp = velocity > snapVelocityThreshold ? rotLerpFast : rotLerpSlow;
+
+        camera.position.lerp(targetPosition.current, delta * posLerp);
 
         // Calculate Rotation
         const up = transform.binormal; // Bank with the curve
@@ -128,8 +140,8 @@ export function CameraRig() {
         matrix.lookAt(camera.position, lookAtPoint.current, up);
         targetQuaternion.current.setFromRotationMatrix(matrix);
 
-        // Apply Smooth Rotation
-        camera.quaternion.slerp(targetQuaternion.current, delta * 4.0);
+        // Apply Adaptive Rotation
+        camera.quaternion.slerp(targetQuaternion.current, delta * rotLerp);
 
         // Store Update: Active Card Index
         // Only update if changed to minimize re-renders
@@ -153,23 +165,57 @@ export function CameraRig() {
  */
 export function ScrollListener() {
     const scrollProgressRef = useRef(0);
+    const velocityRef = useRef(0);
+    const lastTimeRef = useRef(Date.now());
 
     useEffect(() => {
-        const scrollSpeed = 0.0003;
+        // OPTIMIZED: Increased from 0.0003 to 0.0008 for more responsive feel
+        const scrollSpeed = 0.0008;
+        const maxVelocity = 0.02; // Prevent sudden jumps
+        const momentumDecay = 0.95; // Natural deceleration
+
+        // Momentum animation loop
+        let rafId: number;
+        const applyMomentum = () => {
+            if (Math.abs(velocityRef.current) > 0.0001) {
+                scrollProgressRef.current += velocityRef.current;
+                velocityRef.current *= momentumDecay;
+
+                usePortfolioStore.getState().setScrollProgress(scrollProgressRef.current);
+                rafId = requestAnimationFrame(applyMomentum);
+            }
+        };
 
         const handleWheel = (e: WheelEvent) => {
             if (!usePortfolioStore.getState().isIntroComplete) return;
             e.preventDefault();
 
-            const delta = e.deltaY * scrollSpeed;
+            // Cancel momentum
+            if (rafId) cancelAnimationFrame(rafId);
+
+            // Calculate delta with velocity clamping
+            let delta = e.deltaY * scrollSpeed;
+
+            // Clamp velocity to prevent jumps
+            delta = Math.max(-maxVelocity, Math.min(maxVelocity, delta));
+
             scrollProgressRef.current += delta;
+            velocityRef.current = delta; // Store for momentum
 
             // Update store
             usePortfolioStore.getState().setScrollProgress(scrollProgressRef.current);
+
+            // Start momentum decay
+            rafId = requestAnimationFrame(applyMomentum);
         };
 
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (!usePortfolioStore.getState().isIntroComplete) return;
+
             const keyScrollAmount = 0.05;
+            const videoCards = usePortfolioStore.getState().videoCards;
+            const scrollToCard = usePortfolioStore.getState().scrollToCard;
+            const activeCardIndex = usePortfolioStore.getState().activeCardIndex;
 
             switch (e.key) {
                 case 'ArrowDown':
@@ -186,7 +232,48 @@ export function ScrollListener() {
                     break;
                 case ' ':
                     e.preventDefault();
-                    // Spacebar can trigger flip
+                    // Spacebar = Next Card
+                    const nextIndex = Math.min(activeCardIndex + 1, videoCards.length - 1);
+                    scrollToCard(nextIndex);
+                    scrollProgressRef.current = videoCards[nextIndex].position;
+                    break;
+                // Number keys 1-5 for section jumps
+                case '1':
+                    e.preventDefault();
+                    scrollToCard(0); // Hero
+                    scrollProgressRef.current = videoCards[0].position;
+                    break;
+                case '2':
+                    e.preventDefault();
+                    const narrativeIndex = videoCards.findIndex((c) => c.position >= 0.15);
+                    if (narrativeIndex !== -1) {
+                        scrollToCard(narrativeIndex);
+                        scrollProgressRef.current = videoCards[narrativeIndex].position;
+                    }
+                    break;
+                case '3':
+                    e.preventDefault();
+                    const commercialIndex = videoCards.findIndex((c) => c.position >= 0.45);
+                    if (commercialIndex !== -1) {
+                        scrollToCard(commercialIndex);
+                        scrollProgressRef.current = videoCards[commercialIndex].position;
+                    }
+                    break;
+                case '4':
+                    e.preventDefault();
+                    const mvIndex = videoCards.findIndex((c) => c.position >= 0.75);
+                    if (mvIndex !== -1) {
+                        scrollToCard(mvIndex);
+                        scrollProgressRef.current = videoCards[mvIndex].position;
+                    }
+                    break;
+                case '5':
+                    e.preventDefault();
+                    const contactIndex = videoCards.findIndex((c) => c.position >= 0.95);
+                    if (contactIndex !== -1) {
+                        scrollToCard(contactIndex);
+                        scrollProgressRef.current = videoCards[contactIndex].position;
+                    }
                     break;
             }
         };
@@ -197,6 +284,7 @@ export function ScrollListener() {
         return () => {
             window.removeEventListener('wheel', handleWheel);
             window.removeEventListener('keydown', handleKeyDown);
+            if (rafId) cancelAnimationFrame(rafId);
         };
     }, []);
 
