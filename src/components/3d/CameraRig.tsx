@@ -54,8 +54,9 @@ export function CameraRig() {
         );
 
         // 2. FIXED MAGNETIC SNAP - Only when truly stopped
-        const snapVelocityThreshold = 0.003; // Stricter threshold
-        const snapStrength = 2.0 * delta; // Gentler pull
+        const snapVelocityThreshold = 0.002; // REFINED: Even stricter
+        const snapStrength = 1.5 * delta; // REFINED: Even gentler
+        const snapDistance = 0.035; // REFINED: Tighter activation
 
         let isSnapping = false;
         let activeCardPosition = -1;
