@@ -1,16 +1,15 @@
 'use client';
 
 import { useRef, useState, useMemo } from 'react';
-import { useFrame, useLoader } from '@react-three/fiber';
+import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { TextureLoader } from 'three';
 import * as THREE from 'three';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { cardShaderVertex, cardShaderFragment, cardBackShaderFragment } from '@/shaders/cardShaders';
+import { useStackLayout } from '@/utils/stackLayout';
 
 interface VideoCardProps {
     id: string;
-    position: THREE.Vector3;
-    rotation: THREE.Quaternion;
     thumbnail: string;
     title: string;
     description: string;
@@ -20,8 +19,6 @@ interface VideoCardProps {
 
 export function VideoCard({
     id,
-    position,
-    rotation,
     thumbnail,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     title,
@@ -33,18 +30,21 @@ export function VideoCard({
 }: VideoCardProps) {
     const meshRef = useRef<THREE.Mesh>(null);
     const groupRef = useRef<THREE.Group>(null);
+    const { viewport } = useThree();
 
     const [hovered, setHovered] = useState(false);
     const activeCardIndex = usePortfolioStore((state) => state.activeCardIndex);
+    const scrollProgress = usePortfolioStore((state) => state.scrollProgress);
     const flippedCards = usePortfolioStore((state) => state.flippedCards);
-    // const toggleCardFlip = usePortfolioStore((state) => state.toggleCardFlip); // Unused
     const openPlayer = usePortfolioStore((state) => state.openPlayer);
 
     const isActive = activeCardIndex === index;
     const isFlipped = flippedCards.has(id);
 
-    // Load thumbnail texture (using placeholder for now)
-    // In production, you'd load the actual YouTube thumbnail
+    // Get stack layout calculator
+    const { getCardTransform } = useStackLayout();
+
+    // Load thumbnail texture
     const texture = useLoader(TextureLoader, thumbnail);
 
     // Shader uniforms for the front face
@@ -69,6 +69,11 @@ export function VideoCard({
         []
     );
 
+    // BASE CARD SIZE - smaller for breathing room
+    // 16:9 aspect ratio, sized to fit within 65vh/80vw
+    const baseWidth = 4.8;
+    const baseHeight = 2.7;
+
     // Animation loop
     useFrame((state, delta) => {
         if (!meshRef.current || !groupRef.current) return;
@@ -85,17 +90,56 @@ export function VideoCard({
             delta * 5
         );
 
-        // Animate flip rotation
-        const targetRotationY = isFlipped ? Math.PI : 0;
-        groupRef.current.rotation.y = THREE.MathUtils.lerp(
-            groupRef.current.rotation.y,
-            targetRotationY,
-            delta * 8
+        // Calculate target transform from stack layout
+        const targetTransform = getCardTransform(
+            index,
+            activeCardIndex,
+            scrollProgress % 1 // Fractional part for smooth interpolation
         );
 
-        // Subtle floating animation when active
+        // POSITION: Smooth lerp to target Z-position
+        groupRef.current.position.lerp(targetTransform.position, delta * 5);
+
+        // ROTATION: Handle Y-axis flip for card details
+        // But NEVER rotate on X or Z axes (no tumbling!)
+        const targetRotationY = isFlipped ? Math.PI : 0;
+        groupRef.current.rotation.set(
+            0, // X: always 0
+            THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRotationY, delta * 8),
+            0  // Z: always 0
+        );
+
+        // SCALE: Apply depth-based scaling with breathing room constraint
+        const { scale, opacity } = targetTransform;
+
+        // Clamp scale to ensure active card respects 65vh/80vw
+        let finalScale = scale;
         if (isActive) {
-            groupRef.current.position.y += Math.sin(state.clock.elapsedTime * 2) * 0.001;
+            // Calculate max scale based on viewport to ensure breathing room
+            const viewportConstraint = Math.min(
+                (viewport.height * 0.65) / baseHeight,
+                (viewport.width * 0.80) / baseWidth
+            );
+            finalScale = Math.min(scale, viewportConstraint);
+        }
+
+        groupRef.current.scale.lerp(
+            new THREE.Vector3(finalScale, finalScale, 1),
+            delta * 5
+        );
+
+        // OPACITY: Fade distant cards (applied to materials in render)
+        if (meshRef.current.material) {
+            const material = meshRef.current.material as THREE.ShaderMaterial;
+            material.opacity = opacity;
+            material.transparent = opacity < 1;
+        }
+
+        // Disable floating animation during scroll (reduces visual noise)
+        // Only subtle float when completely stationary and active
+        if (isActive && Math.abs(scrollProgress - activeCardIndex) < 0.01) {
+            const floatAmount = Math.sin(state.clock.elapsedTime * 2) * 0.0005;
+            groupRef.current.position.y += floatAmount;
         }
     });
 
@@ -112,11 +156,7 @@ export function VideoCard({
     };
 
     return (
-        <group
-            ref={groupRef}
-            position={position}
-            quaternion={rotation}
-        >
+        <group ref={groupRef}>
             {/* Front Face - Video Thumbnail */}
             <mesh
                 ref={meshRef}
@@ -125,7 +165,7 @@ export function VideoCard({
                 onClick={handleClick}
                 onPointerDown={handlePointerDown}
             >
-                <planeGeometry args={[3.555, 2, 32, 32]} /> {/* 16:9 aspect ratio */}
+                <planeGeometry args={[baseWidth, baseHeight, 32, 32]} />
                 <shaderMaterial
                     vertexShader={cardShaderVertex}
                     fragmentShader={cardShaderFragment}
@@ -136,7 +176,7 @@ export function VideoCard({
 
             {/* Back Face - Typography/Credits */}
             <mesh position={[0, 0, -0.01]}>
-                <planeGeometry args={[3.555, 2, 16, 16]} />
+                <planeGeometry args={[baseWidth, baseHeight, 16, 16]} />
                 <shaderMaterial
                     vertexShader={cardShaderVertex}
                     fragmentShader={cardBackShaderFragment}
@@ -148,7 +188,7 @@ export function VideoCard({
             {/* Active indicator glow */}
             {isActive && (
                 <mesh position={[0, 0, -0.02]}>
-                    <planeGeometry args={[3.8, 2.25]} />
+                    <planeGeometry args={[baseWidth + 0.3, baseHeight + 0.3]} />
                     <meshBasicMaterial
                         color={0x00ffff}
                         transparent

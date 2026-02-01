@@ -8,7 +8,6 @@ import { BlendFunction } from 'postprocessing';
 import { VideoCard } from './VideoCard';
 import { CameraRig, ScrollListener } from './CameraRig';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
-import { useRibbonCurve } from '@/utils/ribbonCurve';
 import * as THREE from 'three';
 
 /**
@@ -35,11 +34,12 @@ function LoadingTracker() {
 }
 
 /**
- * Main 3D Scene - The Infinite Film Ribbon
+ * Z-Axis Tunnel Navigation - Main 3D Scene
+ * Cards on linear Z-stack, static camera, no rotation
+ * Eliminates motion sickness from curve-based tumbling
  */
 export function FilmRibbonScene() {
     const videoCards = usePortfolioStore((state) => state.videoCards);
-    const { getCardTransform } = useRibbonCurve();
     const isDragging = useRef(false);
 
     // Prevent drag-to-black by tracking pointer down/up
@@ -57,7 +57,7 @@ export function FilmRibbonScene() {
 
             <Canvas
                 camera={{
-                    position: [0, 2, 10],
+                    position: [0, 0, 10],
                     fov: 50,
                     near: 0.1,
                     far: 1000,
@@ -71,81 +71,68 @@ export function FilmRibbonScene() {
                 onPointerDown={handlePointerDown}
                 onPointerUp={handlePointerUp}
             >
-                {/* Loading Tracker - must be inside Canvas */}
+                {/* Loading Tracker */}
                 <LoadingTracker />
-                {/* Camera Controller */}
+
+                {/* Static Camera Controller */}
                 <CameraRig />
 
-                {/* Lighting - Cinematic Teal & Orange Setup */}
-                <ambientLight intensity={0.1} /> {/* Darker ambient */}
-                <directionalLight position={[10, 10, 5]} intensity={1.5} color="#cffafe" /> {/* Cool Key */}
-                <pointLight position={[-10, -10, -5]} intensity={0.5} color="#fbbf24" /> {/* Warm Rim */}
+                {/* Cinematic Lighting - Teal & Orange */}
+                <ambientLight intensity={0.1} />
+                <directionalLight position={[10, 10, 5]} intensity={1.5} color="#cffafe" />
+                <pointLight position={[-10, -10, -5]} intensity={0.5} color="#fbbf24" />
 
-                {/* Environment & Atmosphere */}
+                {/* Starfield - More prominent with breathing room */}
                 <Stars
                     radius={100}
-                    depth={50}
-                    count={7000} // More stars
-                    factor={4}
+                    depth={80}
+                    count={15000}  // Increased for better immersion
+                    factor={6}
                     saturation={0}
                     fade
-                    speed={1} // Faster twinkle
+                    speed={1}
                 />
 
-                {/* Fog for depth - matches global gradient */}
-                <fog attach="fog" args={['#050810', 10, 60]} />
+                {/* Atmospheric Fog */}
+                <fog attach="fog" args={['#050810', 20, 100]} />
 
-                {/* Video Cards along the ribbon */}
-                {videoCards.map((card, index) => {
-                    const transform = getCardTransform(card.position);
+                {/* Video Cards - Simplified props, no position/rotation */}
+                {videoCards.map((card, index) => (
+                    <VideoCard
+                        key={card.id}
+                        id={card.id}
+                        index={index}
+                        thumbnail={card.thumbnail}
+                        title={card.title}
+                        description={card.description}
+                        credits={card.credits}
+                    />
+                ))}
 
-                    return (
-                        <VideoCard
-                            key={card.id}
-                            id={card.id}
-                            position={transform.position}
-                            rotation={transform.rotation}
-                            thumbnail={card.thumbnail}
-                            title={card.title}
-                            description={card.description}
-                            credits={card.credits}
-                            index={index}
-                        />
-                    );
-                })}
+                {/* Section Markers - Static positions on Z-axis */}
+                <SectionMarker text="NARRATIVE" position={[0, 4, -15]} />
+                <SectionMarker text="COMMERCIAL" position={[0, 4, -45]} />
+                <SectionMarker text="MUSIC VIDEO" position={[0, 4, -75]} />
 
-                {/* Section Markers */}
-                <SectionMarker text="NARRATIVE" position={0.13} />
-                <SectionMarker text="COMMERCIAL" position={0.43} />
-                <SectionMarker text="MUSIC VIDEO" position={0.73} />
-                <SectionMarker text="CONTACT" position={0.93} />
-
-                {/* Floating particles that react to speed */}
+                {/* Floating Particles */}
                 <ParticleField />
 
                 {/* Post-Processing Effects */}
                 <EffectComposer>
-                    {/* Bloom for that filmic glow */}
                     <Bloom
-                        intensity={0.5} // Increased bloom
+                        intensity={0.5}
                         luminanceThreshold={0.2}
                         luminanceSmoothing={0.9}
                         mipmapBlur
                     />
-
-                    {/* Chromatic Aberration for cinematic feel */}
                     <ChromaticAberration
                         blendFunction={BlendFunction.NORMAL}
                         offset={new THREE.Vector2(0.0005, 0.0005)}
-                        radialModulation={false}
-                        modulationOffset={0}
                     />
-
-                    {/* Film grain noise */}
                     <Noise
                         premultiply
                         blendFunction={BlendFunction.ADD}
-                        opacity={0.08} // Slightly more grain
+                        opacity={0.08}
                     />
                 </EffectComposer>
             </Canvas>
@@ -154,43 +141,32 @@ export function FilmRibbonScene() {
 }
 
 /**
- * 3D Text Marker Component
+ * Section Marker - Static 3D text labels
+ * No rotation - always face camera
  */
-function SectionMarker({ text, position }: { text: string; position: number }) {
-    const { getCardTransform } = useRibbonCurve();
-    const transform = getCardTransform(position);
-
-    // Offset text slightly above the ribbon
-    const textOffset = new THREE.Vector3(0, 3, 0);
-    textOffset.applyQuaternion(transform.rotation);
-    const finalPos = transform.position.clone().add(textOffset);
-
+function SectionMarker({ text, position }: { text: string; position: [number, number, number] }) {
     return (
-        <group position={finalPos} quaternion={transform.rotation}>
-            <Text
+        <Text
+            position={position}
+            fontSize={1.5}
+            color="white"
+            anchorX="center"
+            anchorY="middle"
+            letterSpacing={0.1}
+        >
+            {text}
+            <meshStandardMaterial
                 color="white"
-                fontSize={1.5}
-                maxWidth={20}
-                lineHeight={1}
-                letterSpacing={0.1}
-                textAlign="center"
-                anchorX="center"
-                anchorY="middle"
-            >
-                {text}
-                <meshStandardMaterial
-                    color="white"
-                    emissive="white"
-                    emissiveIntensity={0.5}
-                    toneMapped={false}
-                />
-            </Text>
-        </group>
+                emissive="white"
+                emissiveIntensity={0.5}
+                toneMapped={false}
+            />
+        </Text>
     );
 }
 
 /**
- * Particle Field - floating debris that reacts to scroll speed
+ * Particle Field - Ambient floating particles
  */
 function ParticleField() {
     const particlesRef = useRef<THREE.Points>(null);

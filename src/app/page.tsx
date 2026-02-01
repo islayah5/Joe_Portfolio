@@ -26,7 +26,8 @@ export default function HomePage() {
             {/* UI Overlays */}
             <IntroSequence />
             <LoadingProgress />
-            <AudioEngine />
+            {/* AudioEngine disabled until audio assets are added */}
+            {/* <AudioEngine /> */}
             <Navigation />
             <YouTubePlayer />
             <CustomCursor />
