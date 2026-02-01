@@ -43,6 +43,12 @@ interface PortfolioState {
     // Intro state
     isIntroComplete: boolean;
     setIntroComplete: () => void;
+
+    // Loading state
+    sceneLoadProgress: number;
+    setSceneLoadProgress: (progress: number) => void;
+    isSceneReady: boolean;
+    setSceneReady: (ready: boolean) => void;
 }
 
 export const usePortfolioStore = create<PortfolioState>((set) => ({
@@ -194,4 +200,10 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
     // Intro state
     isIntroComplete: false,
     setIntroComplete: () => set({ isIntroComplete: true }),
+
+    // Loading state
+    sceneLoadProgress: 0,
+    setSceneLoadProgress: (progress) => set({ sceneLoadProgress: progress }),
+    isSceneReady: false,
+    setSceneReady: (ready) => set({ isSceneReady: ready }),
 }));

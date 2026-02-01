@@ -16,6 +16,8 @@ export function Navigation() {
     const activeCard = videoCards[activeCardIndex];
     const totalCards = videoCards.length;
     const isIntroComplete = usePortfolioStore((state) => state.isIntroComplete);
+    const openPlayer = usePortfolioStore((state) => state.openPlayer);
+    const toggleCardFlip = usePortfolioStore((state) => state.toggleCardFlip);
 
     // Refs for direct DOM access
     const progressBarRef = useRef<HTMLDivElement>(null);
@@ -94,11 +96,11 @@ export function Navigation() {
                     </div>
                 </div>
 
-                <div className="text-right">
+                <div className="text-right backdrop-blur-sm bg-black/30 px-4 py-2 rounded-lg md:bg-transparent md:backdrop-blur-none">
                     <div className="text-white/40 text-[10px] tracking-[0.2em] mb-1 font-mono">
                         PROJECT INDEX
                     </div>
-                    <div className="text-white text-3xl font-light font-display">
+                    <div className="text-white text-2xl md:text-3xl font-light font-display">
                         <span className="text-cyan-400 font-bold">{(activeCardIndex + 1).toString().padStart(2, '0')}</span>
                         <span className="text-white/30 mx-2">/</span>
                         {totalCards.toString().padStart(2, '0')}
@@ -141,7 +143,7 @@ export function Navigation() {
             </div>
 
             {/* --- BOTTOM INFO PANEL --- */}
-            <div className="absolute bottom-0 left-0 right-0 p-8 pb-12 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+            <div className="absolute bottom-0 left-0 right-0 p-8 pb-12 bg-gradient-to-t from-black/95 via-black/60 to-transparent backdrop-blur-md border-t border-white/5 z-20">
                 <div className="max-w-4xl mx-auto md:ml-12 md:mx-0 transition-opacity duration-300">
 
                     {/* Category Label */}
@@ -172,11 +174,18 @@ export function Navigation() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-4 items-center pointer-events-auto">
-                        <button className="group flex items-center gap-3 px-8 py-4 bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-sm tracking-[0.1em] uppercase transition-all shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_40px_rgba(34,211,238,0.5)] clip-path-slant">
+                        <button
+                            onClick={() => activeCard?.id && openPlayer(activeCard.id)}
+                            disabled={!activeCard?.youtubeId}
+                            className="group flex items-center gap-3 px-8 py-4 bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-sm tracking-[0.1em] uppercase transition-all shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:shadow-[0_0_40px_rgba(34,211,238,0.5)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-cyan-500 clip-path-slant"
+                        >
                             <span className="bg-black text-cyan-400 p-1 rounded-full"><Play size={12} fill="currentColor" /></span>
                             Watch Project
                         </button>
-                        <button className="flex items-center gap-3 px-8 py-4 border border-white/20 hover:border-white/50 bg-black/50 hover:bg-white/10 text-white font-medium text-sm tracking-[0.1em] uppercase backdrop-blur-md transition-all">
+                        <button
+                            onClick={() => activeCard?.id && toggleCardFlip(activeCard.id)}
+                            className="flex items-center gap-3 px-8 py-4 border border-white/20 hover:border-white/50 bg-black/50 hover:bg-white/10 text-white font-medium text-sm tracking-[0.1em] uppercase backdrop-blur-md transition-all"
+                        >
                             <Info size={16} />
                             Details
                         </button>

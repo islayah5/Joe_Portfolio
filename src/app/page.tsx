@@ -8,6 +8,7 @@ import { IntroSequence } from '@/components/ui/IntroSequence';
 import { AudioEngine } from '@/components/ui/AudioEngine';
 import { ScrollIndicator } from '@/components/ui/ScrollIndicator';
 import { ScrollHints } from '@/components/ui/ScrollHints';
+import { LoadingProgress } from '@/components/ui/LoadingProgress';
 import './globals.css';
 
 // Dynamically import 3D scene with SSR disabled
@@ -24,17 +25,13 @@ export default function HomePage() {
 
             {/* UI Overlays */}
             <IntroSequence />
+            <LoadingProgress />
             <AudioEngine />
             <Navigation />
             <YouTubePlayer />
             <CustomCursor />
             <ScrollIndicator />
             <ScrollHints />
-
-            {/* Loading hint */}
-            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/30 text-sm pointer-events-none z-0">
-                Loading experience...
-            </div>
         </main>
     );
 }

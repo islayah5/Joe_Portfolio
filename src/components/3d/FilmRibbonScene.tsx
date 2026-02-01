@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Stars, Text } from '@react-three/drei';
+import { Stars, Text, useProgress } from '@react-three/drei';
 import { EffectComposer, Bloom, ChromaticAberration, Noise } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 import { VideoCard } from './VideoCard';
@@ -12,15 +12,47 @@ import { useRibbonCurve } from '@/utils/ribbonCurve';
 import * as THREE from 'three';
 
 /**
+ * Loading Progress Tracker - Updates store with loading state
+ */
+function LoadingTracker() {
+    const { progress } = useProgress();
+    const setSceneLoadProgress = usePortfolioStore((state) => state.setSceneLoadProgress);
+    const setSceneReady = usePortfolioStore((state) => state.setSceneReady);
+
+    useEffect(() => {
+        setSceneLoadProgress(progress);
+
+        // Mark scene as ready when fully loaded
+        if (progress === 100) {
+            // Small delay to ensure everything is rendered
+            setTimeout(() => setSceneReady(true), 500);
+        }
+    }, [progress, setSceneLoadProgress, setSceneReady]);
+
+    return null;
+}
+
+/**
  * Main 3D Scene - The Infinite Film Ribbon
  */
 export function FilmRibbonScene() {
     const videoCards = usePortfolioStore((state) => state.videoCards);
     const { getCardTransform } = useRibbonCurve();
+    const isDragging = useRef(false);
+
+    // Prevent drag-to-black by tracking pointer down/up
+    const handlePointerDown = () => {
+        isDragging.current = true;
+    };
+
+    const handlePointerUp = () => {
+        isDragging.current = false;
+    };
 
     return (
         <>
             <ScrollListener />
+            <LoadingTracker />
 
             <Canvas
                 camera={{
@@ -35,6 +67,8 @@ export function FilmRibbonScene() {
                     toneMappingExposure: 1.2,
                 }}
                 dpr={[1, 2]}
+                onPointerDown={handlePointerDown}
+                onPointerUp={handlePointerUp}
             >
                 {/* Camera Controller */}
                 <CameraRig />
