@@ -112,6 +112,16 @@ export function VideoCard({
         // SCALE: Apply depth-based scaling with breathing room constraint
         const { scale, opacity } = targetTransform;
 
+        // VISIBILITY: Hide distant cards completely (fixes z-index bleed-through)
+        const distance = Math.abs(index - activeCardIndex);
+        if (distance > 2) {
+            // Cards more than 2 positions away are completely hidden
+            groupRef.current.visible = false;
+            return; // Skip rest of frame updates
+        }
+
+        groupRef.current.visible = true;
+
         // Clamp scale to ensure active card respects 65vh/80vw
         let finalScale = scale;
         if (isActive) {

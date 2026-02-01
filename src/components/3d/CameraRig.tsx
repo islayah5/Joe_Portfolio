@@ -13,11 +13,8 @@ export function CameraRig() {
 
     useEffect(() => {
         // STATIC CAMERA - Never moves, never rotates
-        // Cards will move toward/away from this position
         camera.position.set(0, 0, 10);
         camera.lookAt(0, 0, 0);
-
-        // No frame updates needed - camera is completely static
     }, [camera]);
 
     return null;
@@ -25,121 +22,135 @@ export function CameraRig() {
 
 
 /**
- * Optimized Scroll Listener - 60fps Performance
+ * Threshold-Based Scroll Listener - Fixes "Scroll Trap" Bug
  * 
- * Performance Features:
- * - Passive event listeners (non-blocking compositor)
- * - RAF batching (max 60 updates/sec, prevents layout thrashing)
- * - Exponential smoothing (natural momentum feel)
- * - Single state update per frame
+ * QC Issue: Users getting stuck between projects (e.g., can't scroll from 2→3)
+ * Root Cause: Smooth spring physics too gradual, creates dead zones
+ * 
+ * New Approach:
+ * - Accumulate scroll deltas until threshold (100px) crossed
+ * - Snap directly to next/prev card (no in-between states)
+ * - 800ms cooldown prevents rapid-fire jumping
+ * - Predictable, reliable navigation
  */
 export function ScrollListener() {
-    const scrollTargetRef = useRef(0);
-    const scrollCurrentRef = useRef(0);
-    const scrollVelocityRef = useRef(0);
+    const scrollAccumulatorRef = useRef(0);
+    const targetIndexRef = useRef(0);
+    const currentProgressRef = useRef(0);
+    const isSnappingRef = useRef(false);
+    const lastSnapTimeRef = useRef(0);
     const rafIdRef = useRef<number | null>(null);
-    const wheelAccumulatorRef = useRef(0);
 
     useEffect(() => {
-        // Initialize scroll from store
-        const initialProgress = usePortfolioStore.getState().scrollProgress;
-        scrollTargetRef.current = initialProgress;
-        scrollCurrentRef.current = initialProgress;
+        // Initialize from store
+        const initialIndex = usePortfolioStore.getState().activeCardIndex;
+        targetIndexRef.current = initialIndex;
+        currentProgressRef.current = initialIndex;
 
-        // Physics parameters for smooth scrolling
-        const stiffness = 0.12;  // How quickly it responds (0-1, higher = snappier)
-        const damping = 0.75;     // How much it slows down (0-1, higher = less momentum)
-        const scrollSpeed = 0.0006;
-        const maxVelocity = 0.018;
+        // Scroll configuration
+        const SCROLL_THRESHOLD = 100;  // Pixels of accumulated scroll to trigger snap
+        const COOLDOWN_MS = 800;        // Prevent rapid-fire snaps
+        const SNAP_SPEED = 0.15;        // How fast to animate to target (higher = snappier)
 
         /**
-         * Wheel Event Handler - Passive, just accumulates scroll
-         * No state updates here = no layout thrashing
+         * Wheel Handler - Accumulate scroll, trigger on threshold
+         * Passive listener = non-blocking compositor
          */
         const handleWheel = (e: WheelEvent) => {
             if (!usePortfolioStore.getState().isIntroComplete) return;
 
-            // Accumulate scroll delta (don't update state yet!)
-            let delta = e.deltaY * scrollSpeed;
-            delta = Math.max(-maxVelocity, Math.min(maxVelocity, delta));
+            const now = Date.now();
 
-            wheelAccumulatorRef.current += delta;
+            // Ignore input during cooldown period
+            if (now - lastSnapTimeRef.current < COOLDOWN_MS) {
+                return;
+            }
 
-            // Schedule RAF update if not already scheduled
-            if (rafIdRef.current === null) {
-                rafIdRef.current = requestAnimationFrame(smoothScrollLoop);
+            // Accumulate scroll delta
+            scrollAccumulatorRef.current += e.deltaY;
+
+            // Check if threshold crossed
+            if (Math.abs(scrollAccumulatorRef.current) >= SCROLL_THRESHOLD) {
+                const direction = scrollAccumulatorRef.current > 0 ? 1 : -1;
+                scrollAccumulatorRef.current = 0; // Reset accumulator
+
+                // Calculate new target index
+                const videoCards = usePortfolioStore.getState().videoCards;
+                const currentTarget = targetIndexRef.current;
+                const newTarget = Math.max(0, Math.min(videoCards.length - 1, currentTarget + direction));
+
+                // Only snap if target actually changed
+                if (newTarget !== currentTarget) {
+                    targetIndexRef.current = newTarget;
+                    isSnappingRef.current = true;
+                    lastSnapTimeRef.current = now;
+
+                    // Start animation loop if not already running
+                    if (rafIdRef.current === null) {
+                        rafIdRef.current = requestAnimationFrame(animateSnap);
+                    }
+                }
             }
         };
 
         /**
-         * RAF Smooth Scroll Loop - Physics-based interpolation
-         * Runs at 60fps max, batches all state updates
+         * Animation Loop - Smooth snap to target card
          */
-        const smoothScrollLoop = (timestamp: number) => {
+        const animateSnap = () => {
             rafIdRef.current = null;
 
-            // Apply accumulated wheel delta to target
-            if (wheelAccumulatorRef.current !== 0) {
-                scrollTargetRef.current += wheelAccumulatorRef.current;
-                wheelAccumulatorRef.current = 0; // Reset accumulator
-
-                // Clamp target to valid range
-                const videoCards = usePortfolioStore.getState().videoCards;
-                scrollTargetRef.current = Math.max(
-                    0,
-                    Math.min(videoCards.length - 1, scrollTargetRef.current)
-                );
-            }
-
-            // Spring physics: smoothly interpolate current → target
-            const diff = scrollTargetRef.current - scrollCurrentRef.current;
-            scrollVelocityRef.current += diff * stiffness;
-            scrollVelocityRef.current *= damping;
-
-            scrollCurrentRef.current += scrollVelocityRef.current;
+            // Lerp current progress toward target index
+            const diff = targetIndexRef.current - currentProgressRef.current;
+            currentProgressRef.current += diff * SNAP_SPEED;
 
             // Snap to target when very close (prevents infinite micro-movements)
-            if (Math.abs(diff) < 0.001 && Math.abs(scrollVelocityRef.current) < 0.001) {
-                scrollCurrentRef.current = scrollTargetRef.current;
-                scrollVelocityRef.current = 0;
+            if (Math.abs(diff) < 0.01) {
+                currentProgressRef.current = targetIndexRef.current;
+                isSnappingRef.current = false;
             }
 
-            // SINGLE state update per frame (batched)
-            const newIndex = Math.round(scrollCurrentRef.current);
+            // Update store (single batched update)
             usePortfolioStore.setState({
-                scrollProgress: scrollCurrentRef.current,
-                activeCardIndex: newIndex
+                scrollProgress: currentProgressRef.current,
+                activeCardIndex: Math.round(currentProgressRef.current)
             });
 
-            // Continue loop if still moving
-            if (Math.abs(scrollVelocityRef.current) > 0.0001 || wheelAccumulatorRef.current !== 0) {
-                rafIdRef.current = requestAnimationFrame(smoothScrollLoop);
+            // Continue animation if still moving
+            if (isSnappingRef.current) {
+                rafIdRef.current = requestAnimationFrame(animateSnap);
             }
         };
 
         /**
-         * Keyboard Navigation - Instant jumps with smooth interpolation
+         * Keyboard Navigation - Direct jumps to cards
          */
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!usePortfolioStore.getState().isIntroComplete) return;
 
             const videoCards = usePortfolioStore.getState().videoCards;
-            const activeCardIndex = usePortfolioStore.getState().activeCardIndex;
+            const now = Date.now();
             let newTarget: number | null = null;
+
+            // Respect cooldown for keyboard too
+            if (now - lastSnapTimeRef.current < COOLDOWN_MS) {
+                return;
+            }
 
             switch (e.key) {
                 case 'ArrowDown':
                 case 's':
+                case 'S':
                     e.preventDefault();
-                    if (activeCardIndex < videoCards.length - 1) {
-                        newTarget = activeCardIndex + 1;
+                    if (targetIndexRef.current < videoCards.length - 1) {
+                        newTarget = targetIndexRef.current + 1;
                     }
                     break;
                 case 'ArrowUp':
                 case 'w':
+                case 'W':
                     e.preventDefault();
-                    if (activeCardIndex > 0) {
-                        newTarget = activeCardIndex - 1;
+                    if (targetIndexRef.current > 0) {
+                        newTarget = targetIndexRef.current - 1;
                     }
                     break;
                 case '1':
@@ -147,25 +158,37 @@ export function ScrollListener() {
                 case '3':
                 case '4':
                 case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
                     e.preventDefault();
                     const index = parseInt(e.key) - 1;
                     if (index >= 0 && index < videoCards.length) {
                         newTarget = index;
                     }
                     break;
+                case '0':
+                    e.preventDefault();
+                    if (videoCards.length >= 10) {
+                        newTarget = 9; // Jump to 10th card
+                    }
+                    break;
             }
 
-            if (newTarget !== null) {
-                scrollTargetRef.current = newTarget;
+            if (newTarget !== null && newTarget !== targetIndexRef.current) {
+                targetIndexRef.current = newTarget;
+                isSnappingRef.current = true;
+                lastSnapTimeRef.current = now;
 
-                // Start smooth scroll if not already running
+                // Start animation
                 if (rafIdRef.current === null) {
-                    rafIdRef.current = requestAnimationFrame(smoothScrollLoop);
+                    rafIdRef.current = requestAnimationFrame(animateSnap);
                 }
             }
         };
 
-        // CRITICAL: Passive listener = non-blocking compositor
+        // CRITICAL: Passive listener
         window.addEventListener('wheel', handleWheel, { passive: true });
         window.addEventListener('keydown', handleKeyDown);
 

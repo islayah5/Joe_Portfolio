@@ -9,6 +9,7 @@ import { AudioEngine } from '@/components/ui/AudioEngine';
 import { ScrollIndicator } from '@/components/ui/ScrollIndicator';
 import { ScrollHints } from '@/components/ui/ScrollHints';
 import { LoadingProgress } from '@/components/ui/LoadingProgress';
+import { DetailsPanel } from '@/components/ui/DetailsPanel';
 import './globals.css';
 
 // Dynamically import 3D scene with SSR disabled
@@ -17,7 +18,17 @@ const FilmRibbonScene = dynamic(
     { ssr: false }
 );
 
+import { usePortfolioStore } from '@/store/usePortfolioStore';
+
 export default function HomePage() {
+    // Get state for details panel
+    const flippedCards = usePortfolioStore((state) => state.flippedCards);
+    const videoCards = usePortfolioStore((state) => state.videoCards);
+    const activeCardIndex = usePortfolioStore((state) => state.activeCardIndex);
+
+    const activeCard = videoCards[activeCardIndex];
+    const isDetailsOpen = activeCard && flippedCards.has(activeCard.id);
+
     return (
         <main className="relative w-full h-screen overflow-hidden bg-black">
             {/* 3D Scene */}
@@ -33,6 +44,14 @@ export default function HomePage() {
             <CustomCursor />
             <ScrollIndicator />
             <ScrollHints />
+
+            {/* Details Panel - Slides in from right when Details button clicked */}
+            <DetailsPanel
+                isOpen={isDetailsOpen}
+                title={activeCard?.title}
+                description={activeCard?.description}
+                credits={activeCard?.credits}
+            />
         </main>
     );
 }
