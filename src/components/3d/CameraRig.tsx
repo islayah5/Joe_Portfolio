@@ -42,8 +42,8 @@ export function CameraRig() {
         // Velocity-dependent damping for responsive yet smooth feel
         // Fast scroll = higher damping (snappy), slow = lower damping (smooth)
         const velocity = Math.abs(targetScroll - currentScrollRef.current);
-        const dampingFast = 8.0;  // Snappy response for fast scrolling
-        const dampingSlow = 4.0;  // Smooth for slow browsing
+        const dampingFast = 3.5;  // FIXED: Reduced from 8.0
+        const dampingSlow = 3.5;  // FIXED: Same as fast for consistency
         const velocityThreshold = 0.01;
 
         const damping = velocity > velocityThreshold ? dampingFast : dampingSlow;
@@ -53,10 +53,9 @@ export function CameraRig() {
             delta * damping
         );
 
-        // 2. OPTIMIZED MAGNETIC SNAP (SMART LOCK)
-        // Only snaps when user STOPS scrolling - no more fighting input
-        const snapVelocityThreshold = 0.005; // Only snap when nearly stopped
-        const snapStrength = 3.0 * delta; // Gentler pull (was 4.0)
+        // 2. FIXED MAGNETIC SNAP - Only when truly stopped
+        const snapVelocityThreshold = 0.003; // Stricter threshold
+        const snapStrength = 2.0 * delta; // Gentler pull
 
         let isSnapping = false;
         let activeCardPosition = -1;
@@ -73,16 +72,15 @@ export function CameraRig() {
             }
         });
 
-        // Apply Smart Snap - Only when user stops
-        // Tighter bounds (0.05) and requires near-zero velocity
-        if (closestDist < 0.05 && velocity < snapVelocityThreshold) {
+        // Apply Snap - Only when REALLY stopped
+        if (closestDist < 0.04 && velocity < snapVelocityThreshold) {
             isSnapping = true;
             activeCardPosition = snapTarget;
 
-            // Gentle Magnetic Pull - doesn't fight user
+            // Gentle Magnetic Pull
             const nudged = THREE.MathUtils.lerp(targetScroll, snapTarget, snapStrength);
 
-            // Lock when very close to prevent micro-jitter
+            // Lock when very close
             if (closestDist < 0.001) {
                 if (targetScroll !== snapTarget) setScrollProgress(snapTarget);
             } else if (Math.abs(nudged - targetScroll) > 0.000001) {
@@ -94,40 +92,23 @@ export function CameraRig() {
         const t = currentScrollRef.current % 1;
         const transform = getCardTransform(t);
 
-        // Position: "Film Crane" Offset
-        // Sits slightly ABOVE and BEHIND the rail for a cinematic view
-        const cameraOffset = new THREE.Vector3(0, 0.5, 4.0);
+        // FIXED: Camera Positioning - Better centered framing
+        // Slightly higher and farther back for optimal card visibility
+        const cameraOffset = new THREE.Vector3(0, 1.0, 5.0);
         cameraOffset.applyQuaternion(transform.rotation);
         targetPosition.current.copy(transform.position).add(cameraOffset);
 
-        // LookAt: DYNAMIC FOCUS SYSTEM
-        // When Moving -> Look Ahead (Anticipation)
-        // When Stopped -> Look DIRECTLY at Card (Framing)
-
-        // Calculate "Look Ahead" point
-        const lookAheadOffset = 0.08; // How far ahead to look when moving
-        const focusOffset = THREE.MathUtils.lerp(0, lookAheadOffset, Math.min(1, velocity * 200));
-
-        const focusT = (t + focusOffset) % 1;
-        const focusTransform = getCardTransform(focusT);
-
-        // If we are snapping/stopped, verify we are looking at the CARD CENTER
-        // (Adjust focus point to ensure the card is dead center in frame)
-        if (isSnapping && activeCardPosition !== -1) {
-            // Exact card position
-            const exactCardTransform = getCardTransform(activeCardPosition);
-            lookAtPoint.current.lerp(exactCardTransform.position, delta * 5);
-        } else {
-            // Normal flight mode
-            lookAtPoint.current.copy(focusTransform.position);
-        }
+        // FIXED: Look directly at current card position for centered framing
+        // No look-ahead - keeps content centered and predictable
+        const cardPosition = transform.position.clone();
+        lookAtPoint.current.lerp(cardPosition, delta * 10); // Fast, precise centering
 
         // OPTIMIZED: Adaptive Camera Movement
         // Fast scroll = snappy response, slow browse = smooth
-        const posLerpFast = 8.0;
-        const posLerpSlow = 3.0;
-        const rotLerpFast = 6.0;
-        const rotLerpSlow = 3.0;
+        const posLerpFast = 4.0; // FIXED: Reduced from 8.0
+        const posLerpSlow = 4.0; // FIXED: Same for consistency
+        const rotLerpFast = 5.0; // FIXED: Reduced from 6.0
+        const rotLerpSlow = 5.0; // FIXED: Same for consistency
 
         const posLerp = velocity > snapVelocityThreshold ? posLerpFast : posLerpSlow;
         const rotLerp = velocity > snapVelocityThreshold ? rotLerpFast : rotLerpSlow;
@@ -140,8 +121,8 @@ export function CameraRig() {
         matrix.lookAt(camera.position, lookAtPoint.current, up);
         targetQuaternion.current.setFromRotationMatrix(matrix);
 
-        // Apply Adaptive Rotation
-        camera.quaternion.slerp(targetQuaternion.current, delta * rotLerp);
+        // Apply Smooth Rotation
+        camera.quaternion.slerp(targetQuaternion.current, delta * 5.0);
 
         // Store Update: Active Card Index
         // Only update if changed to minimize re-renders
@@ -284,7 +265,6 @@ export function ScrollListener() {
         return () => {
             window.removeEventListener('wheel', handleWheel);
             window.removeEventListener('keydown', handleKeyDown);
-            if (rafId) cancelAnimationFrame(rafId);
         };
     }, []);
 
